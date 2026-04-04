@@ -1,53 +1,103 @@
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { Server, Share2, Home } from 'lucide-react';
+import { Router, GitMerge, Box, Server, Building2, Home } from 'lucide-react';
 
-// 1. Core / OLT Node (Cyan Glow)
-export const CoreNode = ({ data }) => {
-  return (
-    <div className="bg-charcoal-800 border-2 border-cyan-500 rounded-lg p-3 shadow-cyan-glow flex items-center min-w-[220px]">
-      <div className="bg-cyan-500/20 p-2 rounded-md mr-3">
-        <Server className="text-cyan-400" size={24} />
+// Base Node to keep styling consistent and DRY
+// Added 'badge' prop and 'relative' class for port/core numbers
+const BaseNode = ({ label, type, badge, icon: Icon, textClass, bgClass, borderClass, handleClass, shadowClass, isTarget = true, isSource = true }) => (
+  <div className={`relative bg-charcoal-800 border-2 ${borderClass} rounded-lg p-3 ${shadowClass || 'shadow-md'} flex items-center min-w-[220px]`}>
+    
+    {/* NEW: Optional Badge for Port Numbers or Core Counts */}
+    {badge && (
+      <div className={`absolute -top-3 -right-2 px-2 py-0.5 text-[10px] font-bold tracking-wider uppercase rounded-md bg-[#0f172a] border-2 ${borderClass} ${textClass} shadow-lg z-10`}>
+        {badge}
       </div>
-      <div>
-        <div className="text-[10px] text-cyan-400 font-bold uppercase tracking-widest">{data.type || 'CORE / OLT'}</div>
-        <div className="text-white font-medium text-sm">{data.label}</div>
-      </div>
-      {/* Connection Ports */}
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-cyan-500 border-2 border-charcoal-900" />
+    )}
+
+    <div className={`${bgClass} p-2 rounded-md mr-3`}>
+      <Icon className={textClass} size={24} />
     </div>
-  );
-};
+    <div className="flex flex-col">
+      <div className={`text-[10px] ${textClass} font-bold uppercase tracking-widest`}>
+        {type}
+      </div>
+      <div className="text-white font-medium text-sm pr-2">{label}</div>
+    </div>
 
-// 2. Cable / Splitter Node (Lime Glow)
+    {/* Connection Ports - Horizontal Left to Right Flow */}
+    {isTarget && (
+      <Handle type="target" position={Position.Left} className={`w-3 h-3 ${handleClass} border-2 border-charcoal-900`} />
+    )}
+    {isSource && (
+      <Handle type="source" position={Position.Right} className={`w-3 h-3 ${handleClass} border-2 border-charcoal-900`} />
+    )}
+  </div>
+);
+
+// 1. Core / Route Node (Cyan Glow)
+export const CoreNode = ({ data }) => (
+  <BaseNode 
+    label={data.label} 
+    type={data.type || 'CORE'} 
+    badge={data.badge} // Pass badge data down
+    icon={Router} 
+    textClass="text-cyan-400"
+    bgClass="bg-cyan-500/20"
+    borderClass="border-cyan-500"
+    handleClass="bg-cyan-500"
+    shadowClass="shadow-cyan-glow"
+    isTarget={false} 
+  />
+);
+
+// 2. Cable Node (Green Styling)
+export const CableNode = ({ data }) => (
+  <BaseNode 
+    label={data.label} 
+    type={data.type || 'CABLE'} 
+    badge={data.badge}
+    icon={Server} 
+    textClass="text-green-400"
+    bgClass="bg-green-500/20"
+    borderClass="border-green-500"
+    handleClass="bg-green-500"
+    shadowClass="shadow-green-glow" 
+  />
+);
+
+// 3. Splitter / NAP Node (Purple Styling)
 export const SplitterNode = ({ data }) => {
+  const Icon = data.type === 'NAP' ? Box : GitMerge;
   return (
-    <div className="bg-charcoal-800 border-2 border-lime-500 rounded-lg p-3 shadow-lime-glow flex items-center min-w-[220px]">
-      <div className="bg-lime-500/20 p-2 rounded-md mr-3">
-        <Share2 className="text-lime-400" size={24} />
-      </div>
-      <div>
-        <div className="text-[10px] text-lime-400 font-bold uppercase tracking-widest">{data.type || 'FIBER / SPLITTER'}</div>
-        <div className="text-white font-medium text-sm">{data.label}</div>
-      </div>
-      <Handle type="target" position={Position.Top} className="w-3 h-3 bg-lime-500 border-2 border-charcoal-900" />
-      <Handle type="source" position={Position.Bottom} className="w-3 h-3 bg-lime-500 border-2 border-charcoal-900" />
-    </div>
+    <BaseNode 
+      label={data.label} 
+      type={data.type || 'SPLITTER'} 
+      badge={data.badge}
+      icon={Icon} 
+      textClass="text-purple-400"
+      bgClass="bg-purple-500/20"
+      borderClass="border-purple-500"
+      handleClass="bg-purple-500"
+      shadowClass="shadow-purple-glow" 
+    />
   );
 };
 
-// 3. Customer / ONT Node (Slate/White)
+// 4. Customer / ONT Node (Orange Styling)
 export const CustomerNode = ({ data }) => {
+  const Icon = (data.type === 'DIA' || data.type === 'DARKFIBER') ? Building2 : Home;
   return (
-    <div className="bg-charcoal-700 border-2 border-gray-400 rounded-lg p-3 flex items-center min-w-[220px]">
-      <div className="bg-gray-600 p-2 rounded-md mr-3">
-        <Home className="text-white" size={24} />
-      </div>
-      <div>
-        <div className="text-[10px] text-gray-300 font-bold uppercase tracking-widest">{data.type || 'CUSTOMER / ONT'}</div>
-        <div className="text-white font-medium text-sm">{data.label}</div>
-      </div>
-      <Handle type="target" position={Position.Top} className="w-3 h-3 bg-gray-400 border-2 border-charcoal-900" />
-    </div>
+    <BaseNode 
+      label={data.label} 
+      type={data.type || 'CUSTOMER'} 
+      badge={data.badge}
+      icon={Icon} 
+      textClass="text-orange-400"
+      bgClass="bg-orange-500/20"
+      borderClass="border-orange-500"
+      handleClass="bg-orange-500"
+      shadowClass="shadow-orange-glow" 
+      isSource={false} 
+    />
   );
 };

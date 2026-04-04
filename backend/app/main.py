@@ -31,59 +31,60 @@ app.include_router(customers_router, prefix="/api/customers", tags=["Customers"]
 def root():
     return {"message": "NOC Platform API is running!"}
 
-# --- NEW TOPOLOGY ENDPOINT ---
 @app.get("/api/topology/")
 def get_network_topology(db: Session = Depends(get_db)):
-    # 1. Fetch real customers from your PostgreSQL database
-    customers = db.query(Customer).all()
     
-    nodes = []
-    edges = []
-    
-    # 2. Create the "Root" Core Network Nodes
-    nodes.append({
-        "id": "core-1", 
-        "type": "core", 
-        "position": {"x": 50, "y": 200}, # Left side
-        "data": {"label": "DC-Main Router", "type": "CORE"}
-    })
-    
-    nodes.append({
-        "id": "cable-1", 
-        "type": "splitter", 
-        "position": {"x": 350, "y": 200}, # Middle
-        "data": {"label": "48-Core Main Trunk", "type": "CABLE"}
-    })
-    
-    edges.append({
-        "id": "e-core-cable", 
-        "source": "core-1", 
-        "target": "cable-1", 
-        "animated": True, 
-        "style": {"stroke": "#06b6d4", "strokeWidth": 3}
-    })
+    # Common styles for our edge labels to fit the dark theme
+    label_style = {"fill": "#ffffff", "fontWeight": "bold", "fontSize": 12}
+    label_bg_style = {"fill": "#1f2937", "stroke": "#374151", "strokeWidth": 1, "rx": 4, "ry": 4}
 
-    # 3. Dynamically generate Nodes & Edges for every Customer in your DB!
-    # We spread them out vertically on the right side of the screen
-    start_y = 100
-    for index, cust in enumerate(customers):
-        cust_node_id = f"cust-{cust.customer_id}"
+    nodes = [
+        # Backbone Layer
+        {"id": "route-n1", "type": "core", "position": {"x": 50, "y": 250}, "data": {"label": "North-Zone-Backbone", "type": "ROUTE"}},
+        {"id": "cable-n1", "type": "cable", "position": {"x": 350, "y": 250}, "data": {"label": "CABLE-N1 (48-Core)", "type": "CABLE"}},
         
-        # Add Customer Node
-        nodes.append({
-            "id": cust_node_id,
-            "type": "customer",
-            "position": {"x": 700, "y": start_y + (index * 150)}, # Right side, stacked vertically
-            "data": {"label": cust.customer_name, "type": cust.customer_type}
-        })
+        # FTTH ODN Tree
+        {"id": "pfs-1", "type": "splitter", "position": {"x": 650, "y": 100}, "data": {"label": "PFS-YABA-01", "type": "PFS"}},
+        {"id": "pfp-1", "type": "splitter", "position": {"x": 950, "y": 100}, "data": {"label": "PFP-YABA-MAIN", "type": "PFP"}},
+        {"id": "nap-1", "type": "splitter", "position": {"x": 1250, "y": 100}, "data": {"label": "NAP-YABA-001 (8 Ports)", "type": "NAP"}},
         
-        # Add Edge connecting Trunk Cable to Customer
-        edges.append({
-            "id": f"e-cable-{cust_node_id}",
-            "source": "cable-1",
-            "target": cust_node_id,
-            "animated": True,
-            "style": {"stroke": "#84cc16", "strokeWidth": 3}
-        })
+        # Customers
+        {"id": "cust-glotech", "type": "customer", "position": {"x": 1600, "y": 100}, "data": {"label": "Glo-Tech Hub", "type": "FTTH"}},
+        {"id": "cust-cupcake", "type": "customer", "position": {"x": 700, "y": 250}, "data": {"label": "Cupcake", "type": "DIA"}},
+        {"id": "cust-swiftnet", "type": "customer", "position": {"x": 700, "y": 400}, "data": {"label": "SwiftNet Solutions", "type": "DARKFIBER"}},
+    ]
+    
+    edges = [
+        # Backbone routing
+        {"id": "e-rt-cb", "source": "route-n1", "target": "cable-n1", "animated": True, "style": {"stroke": "#06b6d4"}},
+        
+        # FTTH Path (Core 1)
+        {
+            "id": "e-cb-pfs", "source": "cable-n1", "target": "pfs-1", "animated": True, 
+            "style": {"stroke": "#a855f7"}, 
+            "label": "Core 1", "labelStyle": label_style, "labelBgStyle": label_bg_style
+        },
+        {"id": "e-pfs-pfp", "source": "pfs-1", "target": "pfp-1", "animated": True, "style": {"stroke": "#a855f7"}},
+        {"id": "e-pfp-nap", "source": "pfp-1", "target": "nap-1", "animated": True, "style": {"stroke": "#a855f7"}},
+        
+        # --- THE FIX: Displaying the NAP Port + Drop Cable ---
+        {
+            "id": "e-nap-glo", "source": "nap-1", "target": "cust-glotech", "animated": True, 
+            "style": {"stroke": "#a855f7"}, 
+            "label": "Port 1 (DROP-GT-001)", "labelStyle": label_style, "labelBgStyle": label_bg_style
+        },
+        
+        # Direct DIA / Dark Fiber Paths (Cores 6 & 9)
+        {
+            "id": "e-cb-cup", "source": "cable-n1", "target": "cust-cupcake", "animated": True, 
+            "style": {"stroke": "#f97316"}, 
+            "label": "Core 6 (DIA)", "labelStyle": label_style, "labelBgStyle": label_bg_style
+        },
+        {
+            "id": "e-cb-swift", "source": "cable-n1", "target": "cust-swiftnet", "animated": False, 
+            "style": {"stroke": "#57534e", "strokeWidth": 4}, 
+            "label": "Core 9 (Dark Fiber)", "labelStyle": label_style, "labelBgStyle": label_bg_style
+        },
+    ]
 
     return {"nodes": nodes, "edges": edges}

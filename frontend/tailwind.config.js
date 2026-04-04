@@ -25,6 +25,20 @@ export default {
       boxShadow: {
         'cyan-glow': '0 0 10px rgba(34, 211, 238, 0.5)',
         'lime-glow': '0 0 10px rgba(163, 230, 53, 0.5)',
+        // Added the missing glows for your cables, splitters, and customers
+        'green-glow': '0 0 10px rgba(74, 222, 128, 0.5)',
+        'purple-glow': '0 0 10px rgba(192, 132, 252, 0.5)',
+        'orange-glow': '0 0 10px rgba(251, 146, 60, 0.5)',
+      },
+      // NEW: Added the animation and keyframes for the sidebar
+      keyframes: {
+        'slide-in-right': {
+          '0%': { transform: 'translateX(100%)' },
+          '100%': { transform: 'translateX(0)' },
+        }
+      },
+      animation: {
+        'slide-in-right': 'slide-in-right 0.3s ease-out forwards',
       }
     },
   },
