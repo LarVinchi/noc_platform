@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NocAppShell from './components/NocAppShell';
 import CrmServices from './pages/CrmServices';
+import TopologyMap from './pages/TopologyMap';
 
 // Extract the dashboard into a quick local component
 const DashboardHome = () => (
@@ -29,7 +30,7 @@ function App() {
           <Route path="/" element={<DashboardHome />} />
           <Route path="/crm" element={<CrmServices />} />
           {/* We will build these later */}
-          <Route path="/topology" element={<div className="text-white">Topology Map Coming Soon</div>} />
+          <Route path="/topology" element={<TopologyMap />} />
           <Route path="/incidents" element={<div className="text-white">Incidents Kanban Coming Soon</div>} />
         </Routes>
       </NocAppShell>
