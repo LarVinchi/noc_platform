@@ -1,4 +1,5 @@
 import React from 'react';
+import { NavLink } from 'react-router-dom';
 import { LayoutDashboard, Map, Users, AlertTriangle, Settings } from 'lucide-react';
 
 const NocAppShell = ({ children }) => {
@@ -15,21 +16,20 @@ const NocAppShell = ({ children }) => {
 
         {/* Navigation Links */}
         <div className="flex-1 py-6 px-4 space-y-2">
-          <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" active />
-          <NavItem icon={<Map size={20} />} label="Topology Map" />
-          <NavItem icon={<Users size={20} />} label="CRM & Services" />
-          <NavItem icon={<AlertTriangle size={20} />} label="Incidents" />
+          <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
+          <NavItem to="/topology" icon={<Map size={20} />} label="Topology Map" />
+          <NavItem to="/crm" icon={<Users size={20} />} label="CRM & Services" />
+          <NavItem to="/incidents" icon={<AlertTriangle size={20} />} label="Incidents" />
         </div>
 
         {/* Footer/Settings */}
         <div className="p-4 border-t border-charcoal-700">
-          <NavItem icon={<Settings size={20} />} label="Settings" />
+          <NavItem to="/settings" icon={<Settings size={20} />} label="Settings" />
         </div>
       </nav>
 
       {/* Main Content Area */}
       <main className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Top Header Bar */}
         <header className="h-16 border-b border-charcoal-700 flex items-center justify-between px-8 bg-charcoal-800/50 backdrop-blur-sm">
           <h2 className="text-lg font-medium text-gray-200">Global Overview</h2>
           <div className="flex items-center space-x-4">
@@ -41,7 +41,6 @@ const NocAppShell = ({ children }) => {
           </div>
         </header>
 
-        {/* Page Content Injection */}
         <div className="flex-1 overflow-auto p-8">
           {children}
         </div>
@@ -50,19 +49,22 @@ const NocAppShell = ({ children }) => {
   );
 };
 
-// Helper component for the navigation buttons
-const NavItem = ({ icon, label, active }) => {
+// Updated: Now uses NavLink for actual routing
+const NavItem = ({ to, icon, label }) => {
   return (
-    <button 
-      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200 ${
-        active 
+    <NavLink 
+      to={to}
+      className={({ isActive }) => `
+        w-full flex items-center space-x-3 px-4 py-3 rounded-lg transition-all duration-200
+        ${isActive 
           ? 'bg-charcoal-700 text-cyan-400 border-l-4 border-cyan-400' 
           : 'text-gray-400 hover:bg-charcoal-700 hover:text-gray-200 border-l-4 border-transparent'
-      }`}
+        }
+      `}
     >
       {icon}
       <span className="font-medium">{label}</span>
-    </button>
+    </NavLink>
   );
 };
 
