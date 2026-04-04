@@ -18,24 +18,28 @@ INSERT INTO fiber_cores (cable_id, core_number, usage_type, allocation_status)
 SELECT cable_id, generate_series(9, 10), 'DARKFIBER', 'free' FROM fiber_cables WHERE cable_name = 'CABLE-N1';
 
 -- 4. Build the ODN Tree for FTTH (Using Core 1)
--- Create a Primary Fiber Splitter (PFS) attached to Core 1
-INSERT INTO pfs (core_id, name)
-SELECT core_id, 'PFS-YABA-01' FROM fiber_cores WHERE core_number = 1 LIMIT 1;
+-- Stage 1: PFP attached to Core 1
+INSERT INTO pfp (core_id, name, split_ratio)
+SELECT core_id, 'PFP-YABA-MAIN', '1:4' FROM fiber_cores WHERE core_number = 1 LIMIT 1;
 
--- Create a Primary Fiber Pillar (PFP) attached to the PFS
-INSERT INTO pfp (pfs_id, name)
-SELECT pfs_id, 'PFP-YABA-MAIN' FROM pfs WHERE name = 'PFS-YABA-01' LIMIT 1;
+-- Stage 2: PFS attached to PFP
+INSERT INTO pfs (pfp_id, name, split_ratio)
+SELECT pfp_id, 'PFS-YABA-01', '1:8' FROM pfp WHERE name = 'PFP-YABA-MAIN' LIMIT 1;
 
--- Create a Network Access Point (NAP) attached to the PFP
-INSERT INTO nap (pfp_id, nap_code, total_ports)
-SELECT pfp_id, 'NAP-YABA-001', 8 FROM pfp WHERE name = 'PFP-YABA-MAIN' LIMIT 1;
+-- Stage 3: NAP attached to PFS
+INSERT INTO nap (pfs_id, nap_code, total_ports)
+SELECT pfs_id, 'NAP-YABA-001', 8 FROM pfs WHERE name = 'PFS-YABA-01' LIMIT 1;
 
 -- Add physical distribution fibers connecting them
-INSERT INTO distribution_fibers (source_pfs_id, dest_pfp_id, fiber_number, status)
-SELECT pfs.pfs_id, pfp.pfp_id, 1, 'allocated' FROM pfs, pfp WHERE pfs.name = 'PFS-YABA-01' AND pfp.name = 'PFP-YABA-MAIN';
+-- Cable from PFP to PFS (Plugging into Splitter Leg 1 of the PFP)
+INSERT INTO distribution_fibers (cable_name, source_pfp_id, dest_pfs_id, source_port, fiber_number, status)
+SELECT 'DIST-CBL-001', pfp.pfp_id, pfs.pfs_id, 1, 1, 'allocated' 
+FROM pfp, pfs WHERE pfp.name = 'PFP-YABA-MAIN' AND pfs.name = 'PFS-YABA-01';
 
-INSERT INTO distribution_fibers (source_pfp_id, dest_nap_id, fiber_number, status)
-SELECT pfp.pfp_id, nap.nap_id, 1, 'allocated' FROM pfp, nap WHERE pfp.name = 'PFP-YABA-MAIN' AND nap.nap_code = 'NAP-YABA-001';
+-- Cable from PFS to NAP (Plugging into Splitter Leg 3 of the PFS)
+INSERT INTO distribution_fibers (cable_name, source_pfs_id, dest_nap_id, source_port, fiber_number, status)
+SELECT 'DIST-CBL-002', pfs.pfs_id, nap.nap_id, 3, 1, 'allocated' 
+FROM pfs, nap WHERE pfs.name = 'PFS-YABA-01' AND nap.nap_code = 'NAP-YABA-001';
 
 -- 5. Add Customers
 INSERT INTO customers (customer_type, customer_name, service_id_code, email, address) VALUES 

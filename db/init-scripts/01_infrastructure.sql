@@ -35,45 +35,55 @@ CREATE TABLE IF NOT EXISTS fiber_cores (
 );
 
 -- 3. ODN Hardware Nodes (Splitters and Access Points)
-CREATE TABLE IF NOT EXISTS pfs (
-    pfs_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    core_id     UUID NOT NULL REFERENCES fiber_cores(core_id) ON DELETE CASCADE, -- Fed by Backbone
-    name        TEXT NOT NULL,
-    location    geometry(POINT, 4326),
-    created_at  TIMESTAMP DEFAULT now()
-);
-
+-- Stage 1: PFP (Primary Flexibility Point) - Fed by Backbone Core
 CREATE TABLE IF NOT EXISTS pfp (
     pfp_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    pfs_id      UUID NOT NULL REFERENCES pfs(pfs_id) ON DELETE CASCADE, -- Logical Parent
+    core_id     UUID NOT NULL REFERENCES fiber_cores(core_id) ON DELETE CASCADE,
     name        TEXT NOT NULL,
+    split_ratio TEXT CHECK (split_ratio IN ('1:2', '1:4', '1:8')) NOT NULL DEFAULT '1:4',
     location    geometry(POINT, 4326),
     created_at  TIMESTAMP DEFAULT now()
 );
 
+-- Stage 2: PFS (Primary Fiber Splitter) - Fed by PFP
+CREATE TABLE IF NOT EXISTS pfs (
+    pfs_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pfp_id      UUID NOT NULL REFERENCES pfp(pfp_id) ON DELETE CASCADE, 
+    name        TEXT NOT NULL,
+    split_ratio TEXT CHECK (split_ratio IN ('1:4', '1:8', '1:16')) NOT NULL DEFAULT '1:8',
+    location    geometry(POINT, 4326),
+    created_at  TIMESTAMP DEFAULT now()
+);
+
+-- Stage 3: NAP (Network Access Point) - Fed by PFS
 CREATE TABLE IF NOT EXISTS nap (
     nap_id      UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    pfp_id      UUID NOT NULL REFERENCES pfp(pfp_id) ON DELETE CASCADE, -- Logical Parent
+    pfs_id      UUID NOT NULL REFERENCES pfs(pfs_id) ON DELETE CASCADE, 
     nap_code    TEXT UNIQUE NOT NULL,
     total_ports INTEGER NOT NULL CHECK (total_ports > 0),
     location    geometry(POINT, 4326),
     created_at  TIMESTAMP DEFAULT now()
 );
 
--- NEW: 4. ODN Distribution Fibers (The physical cables between your splitters)
+-- 4. ODN Distribution Fibers (The physical cables between your splitters)
 CREATE TABLE IF NOT EXISTS distribution_fibers (
     dist_fiber_id   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    source_pfs_id   UUID REFERENCES pfs(pfs_id), -- Starts at a PFS
-    dest_pfp_id     UUID REFERENCES pfp(pfp_id), -- Ends at a PFP
-    source_pfp_id   UUID REFERENCES pfp(pfp_id), -- OR Starts at a PFP
+    cable_name      TEXT NOT NULL, -- e.g., 'DIST-CBL-001'
+    source_pfp_id   UUID REFERENCES pfp(pfp_id), -- Starts at a PFP
+    dest_pfs_id     UUID REFERENCES pfs(pfs_id), -- Ends at a PFS
+    source_pfs_id   UUID REFERENCES pfs(pfs_id), -- OR Starts at a PFS
     dest_nap_id     UUID REFERENCES nap(nap_id), -- OR Ends at a NAP
+    
+    -- NEW: Track which specific splitter leg/port is sending the light
+    source_port     INTEGER NOT NULL, 
+    
     fiber_number    INTEGER NOT NULL,
     status          TEXT CHECK (status IN ('free', 'allocated', 'bad')) DEFAULT 'free',
     created_at      TIMESTAMP DEFAULT now(),
-    -- Ensure it's either a PFS->PFP link OR a PFP->NAP link, not mixed
+    -- Ensure it's either a PFP->PFS link OR a PFS->NAP link, not mixed
     CONSTRAINT chk_dist_link CHECK (
-        (source_pfs_id IS NOT NULL AND dest_pfp_id IS NOT NULL AND source_pfp_id IS NULL AND dest_nap_id IS NULL) OR
-        (source_pfp_id IS NOT NULL AND dest_nap_id IS NOT NULL AND source_pfs_id IS NULL AND dest_pfp_id IS NULL)
+        (source_pfp_id IS NOT NULL AND dest_pfs_id IS NOT NULL AND source_pfs_id IS NULL AND dest_nap_id IS NULL) OR
+        (source_pfs_id IS NOT NULL AND dest_nap_id IS NOT NULL AND source_pfp_id IS NULL AND dest_pfs_id IS NULL)
     )
 );
 
