@@ -51,6 +51,7 @@ class FiberCore(Base):
 
     # Relationships
     cable = relationship("FiberCable", back_populates="cores")
+    # PFP connects directly to the FiberCore
     pfps = relationship("PFP", back_populates="core", cascade="all, delete")
 
 
@@ -62,7 +63,10 @@ class PFP(Base):
     __tablename__ = "pfp"
     
     pfp_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    
+    # FIXED: PFP connects to the main backbone Core
     core_id = Column(UUID(as_uuid=True), ForeignKey("fiber_cores.core_id", ondelete="CASCADE"), nullable=False)
+    
     name = Column(String, nullable=False)
     split_ratio = Column(String, nullable=False, default='1:4')
     location = Column(Geometry(geometry_type='POINT', srid=4326))
@@ -78,7 +82,10 @@ class PFS(Base):
     __tablename__ = "pfs"
     
     pfs_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    
+    # FIXED: PFS connects upstream to the PFP
     pfp_id = Column(UUID(as_uuid=True), ForeignKey("pfp.pfp_id", ondelete="CASCADE"), nullable=False)
+    
     name = Column(String, nullable=False)
     split_ratio = Column(String, nullable=False, default='1:8')
     location = Column(Geometry(geometry_type='POINT', srid=4326))
@@ -95,7 +102,10 @@ class NAP(Base):
     __tablename__ = "nap"
     
     nap_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    
+    # FIXED: NAP connects upstream to the PFS
     pfs_id = Column(UUID(as_uuid=True), ForeignKey("pfs.pfs_id", ondelete="CASCADE"), nullable=False)
+    
     nap_code = Column(String, unique=True, nullable=False)
     total_ports = Column(Integer, nullable=False)
     location = Column(Geometry(geometry_type='POINT', srid=4326))
