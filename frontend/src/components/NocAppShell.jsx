@@ -1,6 +1,6 @@
 import React from 'react';
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Map, Users, AlertTriangle, Settings } from 'lucide-react';
+import { LayoutDashboard, Map, Users, AlertTriangle, Settings, HardHat } from 'lucide-react';
 
 const NocAppShell = ({ children }) => {
   return (
@@ -19,6 +19,10 @@ const NocAppShell = ({ children }) => {
           <NavItem to="/" icon={<LayoutDashboard size={20} />} label="Dashboard" />
           <NavItem to="/topology" icon={<Map size={20} />} label="Topology Map" />
           <NavItem to="/crm" icon={<Users size={20} />} label="CRM & Services" />
+          
+          {/* NEW PROVISIONING LINK */}
+          <NavItem to="/provisioning" icon={<HardHat size={20} />} label="FTTH Provisioning" />
+          
           <NavItem to="/incidents" icon={<AlertTriangle size={20} />} label="Incidents" />
         </div>
 
