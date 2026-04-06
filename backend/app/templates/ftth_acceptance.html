@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        @page { size: A4; margin: 1.5cm; }
+        body { font-family: Helvetica, sans-serif; font-size: 11px; color: #333; }
+        h2 { text-align: center; font-size: 16px; margin-bottom: 20px; text-decoration: underline; color: #000; }
+        
+        /* Table Layouts for strict positioning */
+        table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        td { padding: 4px; vertical-align: top; }
+        .data-table td { border: none; }
+        .grid-table td { border: 1px solid #ccc; }
+        
+        .section-title { font-weight: bold; margin-bottom: 5px; text-decoration: underline; }
+        .label { font-weight: bold; }
+        .checkbox { font-family: "Courier New", Courier, monospace; font-weight: bold; font-size: 13px; }
+        
+        /* 2x2 Image Grid */
+        .img-container { text-align: center; }
+        .img-container img { max-width: 280px; max-height: 220px; border: 1px solid #000; margin: 5px; }
+        
+        /* Signature Block */
+        .signature-block { margin-top: 40px; }
+        .sign-line { border-bottom: 1px solid #000; width: 200px; display: inline-block; }
+        .sign-img { max-height: 40px; max-width: 150px; }
+    </style>
+</head>
+<body>
+    <h2>FTTH Installation Acceptance Document</h2>
+    
+    <table class="data-table">
+        <tr>
+            <td colspan="2"><span class="label">Project Name:</span> FTTH Deployment - NAP to Rosette</td>
+        </tr>
+        <tr>
+            <td><span class="label">Customer Name:</span> {{ order.customer_name }}</td>
+            <td><span class="label">Service Address:</span> {{ order.service_address }}</td>
+        </tr>
+        <tr>
+            <td><span class="label">ISP:</span> {{ order.isp.value if order.isp else 'N/A' }}</td>
+            <td><span class="label">PO/FN #:</span> {{ order.fn_number or 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td><span class="label">Service Order Number:</span> {{ order.service_order_number }}</td>
+            <td><span class="label">Service ID:</span> {{ order.service_id }}</td>
+        </tr>
+        <tr>
+            <td><span class="label">Drop Technician Name:</span> {{ order.drop_tech_name or 'N/A' }}</td>
+            <td><span class="label">ONT/CPE Technician Name:</span> {{ order.ont_tech_name or 'Not Applicable' }}</td>
+        </tr>
+        <tr>
+            <td colspan="2"><span class="label">Date of Completion:</span> {{ order.completion_date.strftime('%A, %d %B %Y') if order.completion_date else 'N/A' }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title">Installation Summary:</div>
+    <p>This document certifies that the fibre optic installation from the Network Access Point (NAP) to the indoor rosette has been completed in accordance with the technical standards and quality requirements of the FTTH deployment project.</p>
+
+    <div class="section-title">Checklist Confirmation:</div>
+    <table class="data-table">
+        <tr><td><span class="checkbox">[{% if metrics.checklist_completed %}X{% else %} {% endif %}]</span> Pre-Installation: Site verified, materials checked, PPE used.</td></tr>
+        <tr><td><span class="checkbox">[{% if metrics.checklist_completed %}X{% else %} {% endif %}]</span> Cable Routing: Drop cable routed securely, no sharp bends, slack provided.</td></tr>
+        <tr><td><span class="checkbox">[{% if metrics.checklist_completed %}X{% else %} {% endif %}]</span> Rosette Installation: Mounted securely, accessible, labeled.</td></tr>
+        <tr><td><span class="checkbox">[{% if metrics.checklist_completed %}X{% else %} {% endif %}]</span> Fiber Termination: Jacket stripped, fiber cleaned and cleaved, connector installed.</td></tr>
+        <tr><td><span class="checkbox">[{% if metrics.checklist_completed %}X{% else %} {% endif %}]</span> Testing: Continuity tested, insertion loss within limits, results recorded.</td></tr>
+        <tr><td>Which test equipment do you have to test the PON? <span class="checkbox">[X]</span> {{ metrics.test_equipment or 'TS100-70 PON Tester' }}</td></tr>
+        <tr><td><span class="checkbox">[X]</span> Provide Flexscan results: <b>{{ metrics.flexscan_result_dbm }} dBm</b></td></tr>
+        <tr><td><span class="checkbox">[{% if metrics.checklist_completed %}X{% else %} {% endif %}]</span> Documentation: Photos taken, checklist completed, customer informed</td></tr>
+    </table>
+
+    <table class="data-table">
+        <tr>
+            <td><span class="label">Coverage Zone Name:</span> {{ order.coverage_zone_name or 'N/A' }}</td>
+            <td><span class="label">Coverage Zone ID (PFP ID):</span> {{ order.pfp_id or 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td><span class="label">Service Area (PFS ID):</span> {{ order.pfs_id or 'N/A' }}</td>
+            <td><span class="label">PFS 2nd Level Split:</span> {{ order.pfs_split_level or 'N/A' }}</td>
+        </tr>
+        <tr>
+            <td><span class="label">NAP/FAT ID:</span> {{ order.nap_id or 'N/A' }}</td>
+            <td><span class="label">NAP/FAT Port ID:</span> {{ order.nap_port or 'N/A' }}</td>
+        </tr>
+    </table>
+
+    <div class="section-title" style="text-align: center;">Installation Pictures</div>
+    
+    <table class="grid-table img-container">
+        <tr>
+            <td>
+                {% if metrics.photo_nap_url %}<img src="{{ base_dir }}{{ metrics.photo_nap_url }}">{% else %}NAP Photo Missing{% endif %}
+            </td>
+            <td>
+                {% if metrics.photo_routing_url %}<img src="{{ base_dir }}{{ metrics.photo_routing_url }}">{% else %}Routing Photo Missing{% endif %}
+            </td>
+        </tr>
+        <tr>
+            <td>
+                {% if metrics.photo_rosette_url %}<img src="{{ base_dir }}{{ metrics.photo_rosette_url }}">{% else %}Rosette Photo Missing{% endif %}
+            </td>
+            <td>
+                {% if metrics.photo_flexscan_url %}<img src="{{ base_dir }}{{ metrics.photo_flexscan_url }}">{% else %}Flexscan Photo Missing{% endif %}
+            </td>
+        </tr>
+    </table>
+
+    <table class="signature-block data-table">
+        <tr>
+            <td>
+                <span class="label">NOC Representative Sign-off:</span><br><br>
+                {% if noc_signature_url %}
+                    <img class="sign-img" src="{{ base_dir }}{{ noc_signature_url }}"><br>
+                {% else %}
+                    <div class="sign-line"></div><br>
+                {% endif %}
+                Date: {{ order.completion_date.strftime('%d %b %Y') if order.completion_date else '___________' }}
+            </td>
+            <td>
+                <span class="label">ISP Representative / Customer Sign-off:</span><br><br>
+                <div class="sign-line"></div><br>
+                Date: ___________
+            </td>
+        </tr>
+    </table>
+</body>
+</html>

@@ -13,6 +13,9 @@ from app.schemas.provisioning import ServiceOrderCreate, ServiceOrderResponse, S
 from app.models.infrastructure import NAP, DropCable
 from app.models.allocations import DropAllocation
 
+from datetime import datetime
+from app.services.pdf_generator import generate_acceptance_pdf
+
 router = APIRouter(prefix="/provisioning", tags=["Provisioning Workflow"])
 
 # --- Helper logic to save uploaded images ---
@@ -139,11 +142,25 @@ async def complete_installation(
     )
     
     db.add(metrics)
-
-    # 5. Advance the workflow state
+    
+    # Update the completion date
+    order.completion_date = datetime.utcnow()
     order.status = WorkflowStage.PENDING_ACCEPTANCE
 
-    db.commit()
+    db.commit() # Commit to generate the metrics object so the PDF generator can read it
     db.refresh(order)
     
+    # 5. Generate the PDF Document
+    try:
+        # TODO: Replace with `current_user.signature_url` once Auth is fully implemented
+        # Example signature path: "/static/uploads/signatures/noc_admin_sig.png"
+        current_noc_signature = None 
+        
+        pdf_url = generate_acceptance_pdf(order, noc_signature_url=current_noc_signature)
+        order.metrics.acceptance_doc_url = pdf_url
+        db.commit() 
+        db.refresh(order)
+    except Exception as e:
+        print(f"PDF Generation failed: {e}")
+
     return order
