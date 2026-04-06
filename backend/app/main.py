@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
+from app.api.routers import provisioning
 
 # Import our custom routes
 from app.api.customers import router as customers_router
@@ -31,7 +32,11 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==========================================
+# REGISTER ROUTERS
+# ==========================================
 app.include_router(customers_router, prefix="/api/customers", tags=["Customers"])
+app.include_router(provisioning.router, prefix="/api") # <-- Your new Provisioning Router!
 
 @app.get("/")
 def root():

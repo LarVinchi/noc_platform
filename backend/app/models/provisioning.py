@@ -1,28 +1,39 @@
-from sqlalchemy import Column, String, Integer, Numeric, DateTime, ForeignKey, text, Enum
+from sqlalchemy import Column, String, Integer, DateTime, Enum, text
 from sqlalchemy.dialects.postgresql import UUID
-from sqlalchemy.orm import relationship
 from datetime import datetime
 import enum
 
-from app.core.db import Base
+# Ensure this matches your actual project's Base import path
+from app.core.db import Base 
+
+class ServiceCategory(str, enum.Enum):
+    FTTH = "FTTH"
+    DIA = "DIA"
+    DARK_FIBER = "DARK_FIBER"
+    LAYER_2 = "LAYER_2"
 
 class WorkflowStage(str, enum.Enum):
     REQUESTED = "REQUESTED"
+    DESIGNED = "DESIGNED"
     PFS_TESTING = "PFS_TESTING"
     NAP_TESTING = "NAP_TESTING"
     ROSETTE_TESTING = "ROSETTE_TESTING"
     DROP_INSTALLATION = "DROP_INSTALLATION"
     ACTIVE = "ACTIVE"
+    CANCELLED = "CANCELLED"
 
 class ISPType(str, enum.Enum):
     MTNN = "MTNN"
     METROREACH = "METROREACH"
     MANGONET = "MANGONET"
 
-class FTTHServiceOrder(Base):
-    __tablename__ = "ftth_service_orders"
+class ServiceOrder(Base):
+    __tablename__ = "service_orders"
 
     order_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
+    
+    # --- NEW: Categorizes the service type (FTTH, DIA, etc.) ---
+    service_category = Column(Enum(ServiceCategory), nullable=False, default=ServiceCategory.FTTH)
     
     # 1. Customer & ISP Details
     customer_name = Column(String, nullable=False)
@@ -31,19 +42,20 @@ class FTTHServiceOrder(Base):
     email = Column(String)
     isp = Column(Enum(ISPType), nullable=False)
     bandwidth = Column(String, nullable=False) # e.g., "50M"
-    fn_number = Column(String, nullable=True) # Required only for MTNN
+    fn_number = Column(String, nullable=True)  # Required only for MTNN
     
     # 2. Automated IDs
     service_order_number = Column(String, unique=True, nullable=True) # e.g., SHANC01-00001
     service_id = Column(String, unique=True, nullable=True) # e.g., SHANC01-FTTH-50M-00001
     
-    # 3. Infrastructure Routing (Foreign Keys to your infra tables)
-    pfp_id = Column(UUID(as_uuid=True), ForeignKey("pfp.pfp_id"), nullable=True)
-    pfs_id = Column(UUID(as_uuid=True), ForeignKey("pfs.pfs_id"), nullable=True)
+    # 3. Infrastructure Routing (Foreign Keys temporarily removed)
+    pfp_id = Column(UUID(as_uuid=True), nullable=True)
+    pfs_id = Column(UUID(as_uuid=True), nullable=True)
     pfs_port = Column(Integer, nullable=True)
-    nap_id = Column(UUID(as_uuid=True), ForeignKey("nap.nap_id"), nullable=True)
+    nap_id = Column(UUID(as_uuid=True), nullable=True)
     nap_port = Column(Integer, nullable=True)
-
+    drop_cable_id = Column(UUID(as_uuid=True), nullable=True) # <-- ADDED THIS FOR ALLOCATION
+    
     # 4. Workflow & Testing (Populated during install)
     status = Column(Enum(WorkflowStage), default=WorkflowStage.REQUESTED)
     pfs_power_level = Column(String, nullable=True) # e.g., "-18.5dBm"
@@ -51,10 +63,12 @@ class FTTHServiceOrder(Base):
     rosette_power_level = Column(String, nullable=True) # e.g., "-24.2dBm"
     tester_type = Column(String, default="TS100-70 PON Tester")
     
-    # 5. Personnel & Documents
+    # 5. Personnel & Documents (Foreign Keys temporarily removed)
     drop_tech_name = Column(String, nullable=True)
     cpe_tech_name = Column(String, nullable=True)
-    noc_personnel_id = Column(UUID(as_uuid=True), ForeignKey("users.id"), nullable=True) # Tracks who signed it off
+    noc_personnel_id = Column(UUID(as_uuid=True), nullable=True) 
+    requested_by_id = Column(UUID(as_uuid=True), nullable=True) 
+    approved_by_id = Column(UUID(as_uuid=True), nullable=True) 
     
     planned_install_date = Column(DateTime, nullable=True)
     completion_date = Column(DateTime, nullable=True)
