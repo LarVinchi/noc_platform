@@ -1,0 +1,96 @@
+noc_platform/
+├── .pytest_cache
+│   ├── v
+│   │   └── cache
+│   │       └── nodeids
+│   ├── .gitignore
+│   ├── CACHEDIR.TAG
+│   └── README.md
+├── backend
+│   ├── .pytest_cache
+│   │   ├── v
+│   │   │   └── cache
+│   │   │       ├── lastfailed
+│   │   │       └── nodeids
+│   │   ├── .gitignore
+│   │   ├── CACHEDIR.TAG
+│   │   └── README.md
+│   ├── alembic
+│   │   ├── versions
+│   │   │   ├── 23d4a4ad5d49_create_unified_serviceorder_table.py
+│   │   │   ├── ab7c59588a2e_add_designed_to_workflowstage.py
+│   │   │   └── ffc980c60b1b_add_allocation_columns_to_service_order.py
+│   │   ├── env.py
+│   │   ├── README
+│   │   └── script.py.mako
+│   ├── app
+│   │   ├── api
+│   │   │   ├── routers
+│   │   │   │   └── provisioning.py
+│   │   │   └── customers.py
+│   │   ├── core
+│   │   │   ├── config.py
+│   │   │   └── db.py
+│   │   ├── models
+│   │   │   ├── __init__.py
+│   │   │   ├── allocations.py
+│   │   │   ├── crm.py
+│   │   │   ├── incidents.py
+│   │   │   ├── infrastructure.py
+│   │   │   └── provisioning.py
+│   │   ├── schemas
+│   │   │   ├── __init__.py
+│   │   │   ├── crm.py
+│   │   │   └── provisioning.py
+│   │   ├── services
+│   │   └── main.py
+│   ├── tests
+│   │   └── test_db_logic.py
+│   ├── .gitignore
+│   ├── alembic.ini
+│   └── requirements.txt
+├── db
+│   ├── init-scripts
+│   │   ├── 01_infrastructure.sql
+│   │   ├── 02_customers_services.sql
+│   │   ├── 03_incidents_tickets.sql
+│   │   ├── 04_optimized_view.sql
+│   │   └── 05_seed_data.sql
+│   └── migrations
+├── frontend
+│   ├── public
+│   │   ├── favicon.svg
+│   │   └── icons.svg
+│   ├── src
+│   │   ├── api
+│   │   │   └── client.js
+│   │   ├── assets
+│   │   │   ├── hero.png
+│   │   │   ├── react.svg
+│   │   │   └── vite.svg
+│   │   ├── components
+│   │   │   ├── NocAppShell.jsx
+│   │   │   ├── NOCGreeting.jsx
+│   │   │   ├── NOCInteractiveNode.jsx
+│   │   │   ├── NOCLoginAnimation.jsx
+│   │   │   └── TopologyNodes.jsx
+│   │   ├── pages
+│   │   │   ├── CrmServices.jsx
+│   │   │   ├── FTTHProvisioning.jsx
+│   │   │   ├── NOCLoginScreen.jsx
+│   │   │   └── TopologyMap.jsx
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   └── main.jsx
+│   ├── .gitignore
+│   ├── eslint.config.js
+│   ├── index.html
+│   ├── package-lock.json
+│   ├── package.json
+│   ├── postcss.config.js
+│   ├── README.md
+│   ├── tailwind.config.js
+│   └── vite.config.js
+├── .gitignore
+└── docker-compose.yml

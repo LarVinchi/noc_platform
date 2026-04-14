@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID 
+from pydantic import BaseModel
 
 from app.core.db import get_db
 from app.models.provisioning import ServiceOrder, WorkflowStage, InstallMetrics
@@ -48,6 +49,12 @@ def generate_ids(customer_name: str, bandwidth: str, db: Session) -> tuple:
     service_id = f"{prefix}-FTTH-{clean_bandwidth}-{seq_str}"
     
     return so_number, service_id
+
+@router.get("/", response_model=List[ServiceOrderResponse])
+def get_all_service_orders(db: Session = Depends(get_db)):
+    """Fetch all service orders, ordered by newest first."""
+    orders = db.query(ServiceOrder).order_by(ServiceOrder.created_at.desc()).all()
+    return orders
 
 @router.post("/", response_model=ServiceOrderResponse)
 def create_service_order(order_in: ServiceOrderCreate, db: Session = Depends(get_db)):
@@ -96,7 +103,7 @@ def allocate_service_order(
     order.nap_id = alloc_in.nap_id
     order.drop_cable_id = alloc_in.drop_cable_id
     order.nap_port = alloc_in.port_number
-    order.status = WorkflowStage.DESIGNED
+    order.status = WorkflowStage.SCHEDULED
 
     db.commit()
     db.refresh(order)
@@ -163,4 +170,35 @@ async def complete_installation(
     except Exception as e:
         print(f"PDF Generation failed: {e}")
 
+    return order
+
+@router.patch("/{order_id}/accept", response_model=ServiceOrderResponse)
+def accept_installation(order_id: UUID, db: Session = Depends(get_db)):
+    """NOC approves the installation and moves it to active monitoring."""
+    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Service Order not found")
+        
+    if order.status != WorkflowStage.PENDING_ACCEPTANCE:
+        raise HTTPException(status_code=400, detail=f"Cannot accept order in {order.status} stage.")
+
+    order.status = WorkflowStage.MONITORED
+    db.commit()
+    db.refresh(order)
+    
+    return order
+
+class StatusUpdate(BaseModel):
+    status: WorkflowStage
+
+@router.patch("/{order_id}/status", response_model=ServiceOrderResponse)
+def update_order_status(order_id: UUID, status_update: StatusUpdate, db: Session = Depends(get_db)):
+    """Generic endpoint to update an order's status via drag-and-drop."""
+    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).first()
+    if not order:
+        raise HTTPException(status_code=404, detail="Service Order not found")
+        
+    order.status = status_update.status
+    db.commit()
+    db.refresh(order)
     return order
