@@ -30,4 +30,16 @@ export const provisioningApi = {
   updateStatus: (orderId, status) => apiClient.patch(`/provisioning/${orderId}/status`, { status })
 };
 
+// Create a dedicated API service for incidents
+export const incidentsApi = {
+  // List/filter incidents
+  getIncidents: (params) => apiClient.get('/incidents/', { params }),
+
+  // Create a new incident (server auto-generates the tt_number)
+  createIncident: (data) => apiClient.post('/incidents/', data),
+
+  // Update status/resolution fields on an existing incident
+  updateIncident: (incidentId, data) => apiClient.patch(`/incidents/${incidentId}`, data),
+};
+
 export default apiClient;

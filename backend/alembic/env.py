@@ -7,6 +7,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 # Import your Base and your Model
 from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
 from app.models.provisioning import ServiceOrder
+from app.models.incidents import Incident, Ticket, TicketSequence
 from logging.config import fileConfig
 
 from sqlalchemy import engine_from_config

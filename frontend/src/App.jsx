@@ -4,6 +4,7 @@ import NocAppShell from './components/NocAppShell';
 import CrmServices from './pages/CrmServices';
 import TopologyMap from './pages/TopologyMap';
 import FTTHProvisioning from './pages/FTTHProvisioning';
+import IncidentManagement from './pages/IncidentManagement';
 import NOCLoginScreen from './pages/NOCLoginScreen'; // <-- IMPORT NEW SPLIT-SCREEN LOGIN
 
 const DashboardHome = () => (
@@ -42,7 +43,7 @@ function App() {
           <Route path="/crm" element={<CrmServices />} />
           <Route path="/topology" element={<TopologyMap />} />
           <Route path="/provisioning" element={<FTTHProvisioning />} />
-          <Route path="/incidents" element={<div className="text-white">Incidents Kanban Coming Soon</div>} />
+          <Route path="/incidents" element={<IncidentManagement />} />
         </Routes>
       </NocAppShell>
     </BrowserRouter>

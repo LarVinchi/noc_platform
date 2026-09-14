@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS incidents (
     incident_id     UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    incident_type   TEXT CHECK (incident_type IN ('fiber_cut','equipment','power','logical_routing','other')) NOT NULL,
+    incident_type   TEXT CHECK (incident_type IN ('Environmental Issue','Power Issue','Fiber Incident','Interface or Link Issue','Virtualization Incident','Service Unavailability','Infrastructure Damage','Security & Safety Alert','Monitoring Alert','Testing Activity','Migration & Upgrade','Maintenance','Other','Alarms & Triggers','Fiberwatch issue','Network Configuration Issue','Splitter & Passive Components','Transmission')) NOT NULL,
     description     TEXT,
     reported_at     TIMESTAMP DEFAULT now(),
     resolved_at     TIMESTAMP,
-    status          TEXT CHECK (status IN ('open','investigating','resolved','closed')) NOT NULL,
+    status          TEXT CHECK (status IN ('open','investigating','pending','resolved','closed','aborted')) NOT NULL,
     
     -- Expanded Foreign Keys to tag incidents to ANY level of the network
     route_id        UUID REFERENCES fiber_routes(route_id),
@@ -24,5 +24,5 @@ CREATE TABLE IF NOT EXISTS tickets (
     priority        TEXT CHECK (priority IN ('low','medium','high','critical')) DEFAULT 'medium',
     created_at      TIMESTAMP DEFAULT now(),
     updated_at      TIMESTAMP DEFAULT now(),
-    status          TEXT CHECK (status IN ('open','investigating','resolved','closed')) DEFAULT 'open'
+    status          TEXT CHECK (status IN ('open','investigating','pending','resolved','closed','aborted')) DEFAULT 'open'
 );
