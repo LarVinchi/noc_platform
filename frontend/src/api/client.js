@@ -2,7 +2,8 @@ import axios from 'axios';
 
 // This points directly to your FastAPI server port
 const apiClient = axios.create({
-  baseURL: 'http://localhost:8000/api',
+  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api',
+  timeout: 15000,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -33,7 +34,7 @@ export const provisioningApi = {
 // Create a dedicated API service for incidents
 export const incidentsApi = {
   // List/filter incidents
-  getIncidents: (params) => apiClient.get('/incidents/', { params }),
+  getIncidents: (params, options = {}) => apiClient.get('/incidents/', { ...options, params }),
 
   // Create a new incident (server auto-generates the tt_number)
   createIncident: (data) => apiClient.post('/incidents/', data),
