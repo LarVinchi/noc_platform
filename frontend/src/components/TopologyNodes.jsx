@@ -13,7 +13,7 @@ const BaseNode = ({ data, icon: Icon, color, isOnline = true }) => {
       
       {/* Icon Box */}
       <div className="flex-shrink-0 bg-charcoal-950 p-2.5 rounded-md border border-charcoal-800 mr-3">
-        <Icon size={22} color={color} />
+        {React.createElement(Icon, { size: 22, color })}
       </div>
       
       {/* Labels */}

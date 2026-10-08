@@ -87,7 +87,7 @@ const IncidentManagement = () => {
       if (filters.search) params.search = filters.search;
       const response = await incidentsApi.getIncidents(params);
       setIncidents(response.data);
-    } catch (err) {
+    } catch {
       setError('Could not load incidents. Confirm the backend is running.');
     } finally {
       setLoading(false);
@@ -110,7 +110,7 @@ const IncidentManagement = () => {
       setIsCreateOpen(false);
       setNewIncident(EMPTY_INCIDENT);
       fetchIncidents();
-    } catch (err) {
+    } catch {
       alert('Could not save this incident. Check the required fields and try again.');
     } finally {
       setSubmitting(false);
@@ -135,7 +135,7 @@ const IncidentManagement = () => {
       setIsResolveOpen(false);
       setSelectedIncident(null);
       fetchIncidents();
-    } catch (err) {
+    } catch {
       alert('Could not update this incident. Please try again.');
     } finally {
       setSubmitting(false);

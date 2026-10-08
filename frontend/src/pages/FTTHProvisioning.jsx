@@ -43,7 +43,7 @@ const FTTHProvisioning = () => {
       setIsCreateModalOpen(false);
       setNewOrder({ customer_name: '', service_address: '', isp: 'METROREACH', bandwidth: '100Mbps', fn_number: '', phone_number: '', email: ''});
       fetchOrders();
-    } catch (error) { alert("Error creating order."); }
+    } catch { alert("Error creating order."); }
   };
 
   const handleCompleteInstall = async (e) => {
@@ -61,14 +61,14 @@ const FTTHProvisioning = () => {
       setIsInstallModalOpen(false);
       setFlexscanDbm(''); setChecklistCompleted(false); setFiles({ photo_nap: null, photo_routing: null, photo_rosette: null, photo_flexscan: null });
       fetchOrders();
-    } catch (error) { alert("Error submitting installation. Please ensure all required fields are filled."); }
+    } catch { alert("Error submitting installation. Please ensure all required fields are filled."); }
   };
 
   const handleAcceptOrder = async (orderId) => {
     try {
       await provisioningApi.acceptInstallation(orderId);
       fetchOrders();
-    } catch (error) { alert("Failed to accept order."); }
+    } catch { alert("Failed to accept order."); }
   };
 
   // --- DRAG AND DROP LOGIC ---
@@ -96,7 +96,7 @@ const FTTHProvisioning = () => {
       try {
         await provisioningApi.updateStatus(order.order_id, targetStage);
         fetchOrders();
-      } catch (error) {
+      } catch {
         alert("Failed to update status via drag and drop.");
       }
     }

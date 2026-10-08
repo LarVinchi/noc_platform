@@ -135,4 +135,10 @@ Enable continuous WAL archiving if required RPO makes daily backups insufficient
 ## Progress
 
 - M0: document/code baseline reviewed and roadmap recorded.
+- Target integrations confirmed by the user: PRTG, Microsoft 365 SSO and company Linux server.
+- M1 topology slice: actual descendant traversal, active allocation filtering,
+  unique service endpoints and regression tests implemented. SSO/roles/audit remain outstanding.
+- Interface slice: actual incident counts, prioritized work queue, ownership gaps,
+  periodic refresh, connection errors and last-successful-refresh time implemented.
+- CI starter: database-independent backend unit tests, frontend lint and production build.
 - M1 onward: incomplete; report each implemented and tested slice in its commit.
