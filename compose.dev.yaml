@@ -1,0 +1,72 @@
+name: noc-preview
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_USER: noc_preview
+      POSTGRES_PASSWORD: ${NOC_DB_PASSWORD:?Run dev.ps1 to initialize local configuration}
+      POSTGRES_DB: noc_preview
+    volumes:
+      - preview_db:/var/lib/postgresql/data
+      - ./db/init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U noc_preview -d noc_preview']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    build: ./backend
+    environment: &backend_environment
+      POSTGRES_USER: noc_preview
+      POSTGRES_PASSWORD: ${NOC_DB_PASSWORD}
+      POSTGRES_SERVER: db
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: noc_preview
+    command: [alembic, upgrade, head]
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    build: ./backend
+    environment: *backend_environment
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8000', --reload]
+    ports:
+      - '127.0.0.1:18000:8000'
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests:ro
+      - preview_documents:/app/static
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  frontend:
+    build: ./frontend
+    environment:
+      VITE_API_BASE_URL: /api
+      API_PROXY_TARGET: http://api:8000
+    ports:
+      - '127.0.0.1:5173:5173'
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/vite.config.js:/app/vite.config.js:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:5173').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  preview_db:
+  preview_documents:

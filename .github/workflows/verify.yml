@@ -40,6 +40,24 @@ jobs:
       - run: npm run lint
       - run: npm run build
 
-# Database integration/migration tests must be added as separate gates
-# once their existing baseline is reconciled. This workflow
-# verifies the initial unit-test and build milestones, not production readiness.
+  preview-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize disposable preview credentials
+        run: openssl rand -hex 32 | sed 's/^/NOC_DB_PASSWORD=/' > .env
+      - name: Build and migrate a fresh preview database
+        run: docker compose -f compose.dev.yaml up --build -d --wait --wait-timeout 240
+      - name: Verify FTTH intake and existing inventory relationships
+        run: |
+          docker compose -f compose.dev.yaml exec -T -e NOC_ALLOW_INTEGRATION_TESTS=1 api python -m pytest tests/unit tests/integration -q
+          docker compose -f compose.dev.yaml exec -T api python -m pytest tests/test_db_logic.py -q
+      - name: Capture service logs on failure
+        if: failure()
+        run: docker compose -f compose.dev.yaml logs --tail 100
+      - name: Stop the disposable CI stack
+        if: always()
+        run: docker compose -f compose.dev.yaml down
+
+# These development gates do not constitute production readiness or SSO validation.

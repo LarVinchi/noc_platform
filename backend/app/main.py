@@ -10,6 +10,7 @@ from app.api.routers import provisioning, incidents
 # Import our custom routes
 from app.api.customers import router as customers_router
 from app.core.db import get_db
+from sqlalchemy import text
 
 # CRM & Allocation Models
 from app.models.crm import Customer, Service
@@ -52,6 +53,15 @@ app.include_router(incidents.router, prefix="/api")
 @app.get("/")
 def root():
     return {"message": "NOC Platform API is running!"}
+
+
+@app.get("/health/ready")
+def readiness(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return {"status": "ready"}
 
 # ==========================================
 # 1. BASE TOPOLOGY ENDPOINT (Backbone)

@@ -141,4 +141,12 @@ Enable continuous WAL archiving if required RPO makes daily backups insufficient
 - Interface slice: actual incident counts, prioritized work queue, ownership gaps,
   periodic refresh, connection errors and last-successful-refresh time implemented.
 - CI starter: database-independent backend unit tests, frontend lint and production build.
+- Preview launcher: database, migrations, API and frontend start together with
+  `dev.ps1`, using isolated preview volumes, localhost ports and generated credentials.
+- FTTH intake slice: labeled paste extraction, editable review, external work order
+  references, raw-text provenance, duplicate/conflict handling and atomic numbering.
+  The user confirmed paste-only intake for this release; inbox/WhatsApp ingestion is deferred.
+- Fresh-start verification corrected the seed incident category and refreshed the
+  impact view after seeding. Unit, PostgreSQL/API and seeded traversal tests pass.
+- CI now also builds the preview and runs its migrations and database-backed tests.
 - M1 onward: incomplete; report each implemented and tested slice in its commit.
