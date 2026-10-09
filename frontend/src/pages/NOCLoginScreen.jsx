@@ -1,88 +1,30 @@
-import React, { useState } from 'react';
-import NOCInteractiveNode from '../components/NOCInteractiveNode';
-import NOCLoginAnimation from '../components/NOCLoginAnimation';
+import { useState } from 'react';
+import { ShieldCheck, Network } from 'lucide-react';
 
-const NOCLoginScreen = ({ onLoginSuccess }) => {
-  const [username, setUsername] = useState('');
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
-  const [showAnimation, setShowAnimation] = useState(false);
-
-  const handleLogin = (e) => {
-    e.preventDefault();
-    if (!username) return;
-    
-    setIsAuthenticating(true);
-    // Simulate network delay for authentication
-    setTimeout(() => {
-      setIsAuthenticating(false);
-      setShowAnimation(true);
-    }, 1200);
-  };
-
-  if (showAnimation) {
-    return <NOCLoginAnimation engineerName={username} onComplete={onLoginSuccess} />;
+export default function NOCLoginScreen({ configuration, error, onLogin }) {
+  const [busy, setBusy] = useState(false);
+  const [failure, setFailure] = useState('');
+  const preview = configuration?.mode === 'preview';
+  async function enter() {
+    setBusy(true); setFailure('');
+    try { await onLogin(); }
+    catch (error) { setFailure(error.response?.data?.detail || error.message); }
+    finally { setBusy(false); }
   }
-
-  return (
-    <div className="h-screen w-screen flex bg-charcoal-950 text-gray-200 overflow-hidden">
-      
-      {/* Left Panel: The Interactive Tracker */}
-      <div className="hidden lg:flex w-1/2 bg-charcoal-900 relative items-center justify-center border-r border-charcoal-800 flex-col">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-charcoal-800/50 to-transparent"></div>
-        <NOCInteractiveNode />
-        <div className="mt-12 text-charcoal-500 font-mono text-sm tracking-widest uppercase">
-          NOC Core Node Online // System V3.1
-        </div>
-      </div>
-
-      {/* Right Panel: Login Form */}
-      <div className="w-full lg:w-1/2 flex items-center justify-center p-8 lg:p-24 relative">
-        <div className="w-full max-w-md relative z-10">
-          
-          <div className="mb-10">
-            <h1 className="text-4xl font-bold text-white mb-2 tracking-tight">Access Grid</h1>
-            <p className="text-gray-400 font-mono text-sm">Enter operator credentials to proceed.</p>
-          </div>
-
-          <form onSubmit={handleLogin} className="space-y-6">
-            <div>
-              <label className="block text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Operator ID</label>
-              <input 
-                type="text" 
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="e.g. Mike"
-                className="w-full bg-charcoal-900 border border-charcoal-700 text-white px-4 py-3 rounded focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
-                required
-              />
-            </div>
-            
-            <div>
-              <label className="block text-gray-400 text-xs font-bold uppercase tracking-wider mb-2">Passcode</label>
-              <input 
-                type="password" 
-                placeholder="••••••••"
-                className="w-full bg-charcoal-900 border border-charcoal-700 text-white px-4 py-3 rounded focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-colors"
-                required
-              />
-            </div>
-
-            <button 
-              type="submit" 
-              disabled={isAuthenticating}
-              className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-3 px-4 rounded transition-colors flex items-center justify-center uppercase tracking-widest mt-4"
-            >
-              {isAuthenticating ? (
-                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-              ) : (
-                'Authenticate'
-              )}
-            </button>
-          </form>
-        </div>
-      </div>
+  return <div className="min-h-screen bg-charcoal-950 text-slate-200 flex items-center justify-center p-6">
+    <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-charcoal-900 p-10 shadow-2xl">
+      <Network className="text-cyan-400 mb-6" size={36} />
+      <p className="text-xs text-cyan-400 uppercase tracking-widest">Network operations centre</p>
+      <h1 className="text-3xl font-semibold mt-3 mb-4">NOC workspace</h1>
+      <p className="text-slate-400 mb-6">{preview
+        ? 'Local development preview. Actions use an unverified preview identity. Use sample data here.'
+        : 'Use your company Microsoft 365 account. Access depends on your assigned NOC role.'}</p>
+      {(failure || error) && <p role="alert" className="text-red-300 mb-4">{failure || error}</p>}
+      {configuration && !configuration.configured && <p className="text-amber-300 mb-4">Microsoft 365 registration is pending. An administrator must configure access before this environment can be used.</p>}
+      <button onClick={enter} disabled={busy || !configuration?.configured}
+        className="w-full rounded-lg bg-cyan-600 p-3 font-medium disabled:opacity-40 flex items-center justify-center gap-2">
+        <ShieldCheck size={18} />{busy ? 'Opening workspace…' : preview ? 'Open local preview' : 'Sign in with Microsoft 365'}
+      </button>
     </div>
-  );
-};
-
-export default NOCLoginScreen;
+  </div>;
+}

@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.models.infrastructure import FiberRoute, FiberCable, NAP
 from app.models.network_map import NetworkMapImport, MapRouteLink
+from app.models.monitoring import SensorMapping
 from app.services.kmz_parser import parse_kmz
 from app.services.make_sample_kmz import build_kml
 from app.services.impact import service_paths, impact_for_route
@@ -106,6 +107,13 @@ def impact(route_id: UUID, db: Session = Depends(get_db)):
 @router.get("/geography")
 def geography(db: Session = Depends(get_db)):
     features, routes, anchors = [], [], {}
+    alarms = {}
+    cable_routes = {row.cable_id: str(row.route_id) for row in db.query(FiberCable).all()}
+    for sensor in db.query(SensorMapping).filter(SensorMapping.last_state == 'down').all():
+        route_key = str(sensor.route_id) if sensor.route_id else cable_routes.get(sensor.cable_id)
+        if route_key:
+            alarms.setdefault(route_key, []).append({"sensor_id": sensor.sensor_id,
+                "observed_at": sensor.last_observed_at.isoformat(), "incident_id": str(sensor.incident_id) if sensor.incident_id else None})
     for row, raw in db.query(FiberRoute, func.ST_AsGeoJSON(FiberRoute.geometry)).all():
         routes.append({"route_id": str(row.route_id), "name": row.route_name, "status": row.status})
         if raw:
@@ -113,7 +121,8 @@ def geography(db: Session = Depends(get_db)):
             anchors[str(row.route_id)] = geometry["coordinates"][-1]
             features.append({"type": "Feature", "geometry": geometry, "properties": {
                 "name": row.route_name, "inventory_route_id": str(row.route_id), "kind": "route",
-                "status": "planned" if row.status == "planned" else "unknown", "lifecycle": row.status}})
+                "status": "planned" if row.status == "planned" else "unknown", "lifecycle": row.status,
+                "monitoring_alarms": alarms.get(str(row.route_id), [])}})
     locations = {str(row.nap_id): json.loads(raw)["coordinates"] for row, raw in db.query(NAP, func.ST_AsGeoJSON(NAP.location)).all() if raw}
     for service in service_paths(db):
         path = service["paths"][0]

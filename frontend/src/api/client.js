@@ -9,6 +9,30 @@ const apiClient = axios.create({
   },
 });
 
+let tokenProvider;
+export function setTokenProvider(provider) { tokenProvider = provider; }
+apiClient.interceptors.request.use(async (config) => {
+  if (tokenProvider && !config.url?.endsWith('/auth/config')) {
+    const token = await tokenProvider();
+    if (token) config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
+
+export async function openProtectedDocument(path) {
+  if (!path?.startsWith('/static/') || path.includes('..')) throw new Error('Invalid document path');
+  const viewer = window.open('', '_blank');
+  if (!viewer) throw new Error('Allow popups to view the document');
+  viewer.opener = null;
+  try {
+    const apiRoot = apiClient.defaults.baseURL.replace(/\/api\/?$/, '');
+    const response = await apiClient.get(`${apiRoot}${path}`, { responseType: 'blob' });
+    const url = URL.createObjectURL(response.data);
+    viewer.location.href = url;
+    setTimeout(() => URL.revokeObjectURL(url), 60000);
+  } catch (error) { viewer.close(); throw error; }
+}
+
 // Create a dedicated API service for provisioning
 export const provisioningApi = {
   assignmentOptions: () => apiClient.get('/inventory/assignment-options'),

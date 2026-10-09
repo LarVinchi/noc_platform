@@ -9,12 +9,18 @@ v1 with incident migration, PRTG, Microsoft 365 SSO, roles, auditing, reporting,
 and reviewed document generation. The user's additional requirements include
 FibreViz integration, automatic escalation, customer communication, MTTR and SLA.
 
-The repository has React/Vite, FastAPI, SQLAlchemy/Alembic and PostGIS models.
+At the initial review, the repository had React/Vite, FastAPI, SQLAlchemy/Alembic and PostGIS models.
 Incident CRUD and ticket numbering exist; monitoring ingestion, escalation,
 SLA policies, notification delivery and real authentication do not yet exist.
 The RAG proof of concept described in the documents is not present here.
 Docker Compose currently starts only the database, not the full application.
 Dashboard numbers and the login are placeholders.
+
+Current progress is tracked in [the requirements review](requirements-review.md).
+The full local stack, operational dashboard, linked provisioning, FibreViz,
+access controls, audit history and monitoring intake are now implemented.
+Live Entra/PRTG activation and remaining release gates are described in
+[access and monitoring configuration](access-and-monitoring.md).
 
 ## Architecture decision: retain PostgreSQL and PostGIS
 

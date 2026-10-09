@@ -9,6 +9,7 @@ from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
 from app.core.config import settings
 from app.models.activity import ActivityEntry
 from app.models.network_map import NetworkMapImport, MapRouteLink
+from app.models.monitoring import SensorMapping, MonitoringEvent
 from app.models.provisioning import ServiceOrder
 from app.models.incidents import Incident, Ticket, TicketSequence
 from logging.config import fileConfig
@@ -20,7 +21,7 @@ from alembic import context
 
 def include_object(object, name, type_, reflected, compare_to):
     # Ignore PostGIS system tables
-    if type_ == "table" and name == "spatial_ref_sys":
+    if type_ == "table" and name in {"spatial_ref_sys", "audit_events"}:
         return False
     return True
 

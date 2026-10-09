@@ -22,6 +22,9 @@ services:
       POSTGRES_USER: noc_preview
       POSTGRES_PASSWORD: ${NOC_DB_PASSWORD}
       POSTGRES_SERVER: db
+      ENVIRONMENT: development
+      AUTH_MODE: preview
+      MONITORING_INGEST_TOKEN: ${MONITORING_INGEST_TOKEN:-}
       POSTGRES_PORT: '5432'
       POSTGRES_DB: noc_preview
     command: [alembic, upgrade, head]

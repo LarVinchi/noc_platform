@@ -11,6 +11,9 @@ from app.api.routers import provisioning, incidents, inventory, activities, netw
 from app.api.customers import router as customers_router
 from app.core.db import get_db
 from sqlalchemy import text
+from app.core.config import settings
+from app.core.security import AccessMiddleware, auth_configuration, actor_context
+from app.api.routers import audit, monitoring
 
 # CRM & Allocation Models
 from app.models.crm import Customer, Service
@@ -34,14 +37,26 @@ os.makedirs("static/uploads/installations", exist_ok=True)
 # Mount the static directory so the frontend can download the PDFs and view images
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+# Authenticate before reaching API handlers or static documents.
+app.add_middleware(AccessMiddleware)
 # Set up CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], 
-    allow_credentials=True,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.get("/api/auth/config")
+def auth_config():
+    return auth_configuration()
+
+
+@app.get("/api/auth/me")
+def current_user():
+    return actor_context.get()
 
 # ==========================================
 # REGISTER ROUTERS
@@ -53,6 +68,8 @@ app.include_router(inventory.router, prefix="/api")
 app.include_router(activities.router, prefix="/api")
 app.include_router(network_maps.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
+app.include_router(audit.router, prefix="/api")
+app.include_router(monitoring.router, prefix="/api")
 
 @app.get("/")
 def root():

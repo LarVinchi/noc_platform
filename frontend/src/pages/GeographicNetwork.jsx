@@ -52,8 +52,8 @@ export default function GeographicNetwork() {
     for (const [geo, source] of [[inventory, 'inventory'], [layer, 'import']]) {
       if (!geo) continue;
       L.geoJSON(geo, {
-        filter: (feature) => filter === 'all' || feature.properties.status === filter || feature.geometry.type === 'Point',
-        style: (feature) => ({ color: colors[feature.properties.status] || colors.unknown, weight: 5, opacity: 0.9, dashArray: ['down', 'planned'].includes(feature.properties.status) ? '8 6' : undefined }),
+        filter: (feature) => filter === 'all' || (feature.properties.monitoring_alarms?.length ? 'down' : feature.properties.status) === filter || feature.geometry.type === 'Point',
+        style: (feature) => ({ color: feature.properties.monitoring_alarms?.length ? colors.down : colors[feature.properties.status] || colors.unknown, weight: 5, opacity: 0.9, dashArray: feature.properties.monitoring_alarms?.length || ['down', 'planned'].includes(feature.properties.status) ? '8 6' : undefined }),
         pointToLayer: (feature, latlng) => L.circleMarker(latlng, { radius: feature.properties.node_type === 'customer' ? 7 : 5, color: feature.properties.node_type === 'customer' ? '#b69cff' : '#5cc8ff', fillOpacity: 0.8 }),
         onEachFeature: (feature, leafletLayer) => {
           const label = document.createElement('span'); label.textContent = feature.properties.name || 'Network feature';
@@ -80,13 +80,14 @@ export default function GeographicNetwork() {
   }
   return <div className="space-y-4">
     <div className="flex flex-wrap gap-3 items-center"><label className="border border-cyan-700 text-cyan-300 rounded-lg px-3 py-2 text-sm cursor-pointer">{busy ? 'Processing…' : 'Import KMZ / KML'}<input type="file" accept=".kmz,.kml" disabled={busy} onChange={upload} className="sr-only" /></label><select aria-label="Map layer" value={importId} onChange={(e) => { setImportId(e.target.value); if (!e.target.value) { setLayer(null); setSelected(null); setImpact(null); } }} className="bg-slate-800 p-2 rounded-lg text-sm"><option value="">Inventory only</option><option value="demo">Lekki demo · approximate</option>{imports.map((row) => <option key={row.import_id} value={row.import_id}>{row.name}</option>)}</select><select aria-label="Route status filter" value={filter} onChange={(e) => setFilter(e.target.value)} className="bg-slate-800 p-2 rounded-lg text-sm">{['all', 'live', 'down', 'planned', 'unknown'].map((s) => <option key={s}>{s}</option>)}</select><button onClick={refresh} className="text-sm underline text-cyan-300">Refresh</button></div>
-    <p className="text-xs text-slate-400">Route colors reflect file metadata or inventory lifecycle. Customer pins are serving-NAP/route anchors, not verified premises or monitored service health.</p>
+    <p className="text-xs text-slate-400">Red inventory routes have a last-observed down alarm on the route or a cable. Imported colors reflect file metadata. Customer pins are serving-NAP/route anchors; service health needs verification.</p>
     {error && <p role="alert" className="text-sm text-red-300">{error}</p>}
     <div className="grid grid-cols-1 lg:grid-cols-[1fr_300px] gap-4">
       <div ref={container} className="h-[600px] min-w-0 rounded-xl border border-slate-700 z-0" aria-label="Fibre network geographic map" />
       <aside className="rounded-xl border border-slate-700 p-4 space-y-4 text-sm">
         <h2 className="font-semibold">Customer impact & infrastructure</h2>
         {!selected ? <p className="text-slate-400">Select a route or customer to inspect its linked inventory and services.</p> : <>
+          {selected.monitoring_alarms?.map(alarm => <p key={alarm.sensor_id} className="text-xs text-red-300">Sensor {alarm.sensor_id}: last observed down at {new Date(alarm.observed_at).toLocaleString()}. Confirm current conditions.</p>)}
           <h3 className="font-medium">{selected.name}</h3><p className="text-xs text-slate-400">{selected.location_source || selected.status || 'Status unknown'}</p>
           {selected.source === 'import' && selected.kind === 'route' && importId !== 'demo' && !selected.inventory_route_id && <div className="space-y-2"><label className="block text-xs">Link this line to an inventory route<select value={routeId} onChange={(e) => setRouteId(e.target.value)} className="bg-slate-800 p-2 w-full rounded-lg"><option value="">Select route</option>{inventory.routes.map((r) => <option key={r.route_id} value={r.route_id}>{r.name}</option>)}</select></label><button disabled={!routeId || busy} onClick={link} className="bg-cyan-700 p-2 rounded-lg disabled:opacity-50 text-xs">Use this line as inventory geometry</button></div>}
           {impactError && <p role="alert" className="text-red-300">{impactError}</p>}

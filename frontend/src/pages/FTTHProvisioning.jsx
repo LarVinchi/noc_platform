@@ -3,7 +3,7 @@ import {
   List, Layout, AlertTriangle, Plus, Activity, 
   UploadCloud, CheckCircle, X, Download, UserPlus, ShieldCheck, GripVertical
 } from 'lucide-react';
-import { provisioningApi } from '../api/client';
+import { provisioningApi, openProtectedDocument } from '../api/client';
 import FTTHAssignmentModal from '../components/FTTHAssignmentModal';
 import FTTHImportModal from '../components/FTTHImportModal';
 
@@ -200,9 +200,9 @@ const FTTHProvisioning = () => {
                         </button>
                       )}
                       {(order.status === 'PENDING_ACCEPTANCE' || order.status === 'MONITORED') && order.metrics?.acceptance_doc_url && (
-                        <a href={order.metrics.acceptance_doc_url} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-xs font-semibold flex items-center bg-purple-900/30 px-3 py-1.5 rounded">
+                        <button onClick={() => openProtectedDocument(order.metrics.acceptance_doc_url).catch(error => setNotice(error.message))} className="text-purple-400 hover:text-purple-300 text-xs font-semibold flex items-center bg-purple-900/30 px-3 py-1.5 rounded">
                           <Download size={14} className="mr-1" /> View PDF
-                        </a>
+                        </button>
                       )}
                       {order.status === 'PENDING_ACCEPTANCE' && (
                         <button onClick={() => handleAcceptOrder(order.order_id)} className="text-lime-400 hover:text-lime-300 text-xs font-semibold flex items-center bg-lime-900/30 px-3 py-1.5 rounded">
@@ -259,9 +259,9 @@ const FTTHProvisioning = () => {
                           </button>
                         )}
                         {(order.status === 'PENDING_ACCEPTANCE' || order.status === 'MONITORED') && order.metrics?.acceptance_doc_url && (
-                          <a href={order.metrics.acceptance_doc_url} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-[11px] font-semibold flex items-center bg-purple-900/30 px-2 py-1 rounded flex-1 justify-center">
+                          <button onClick={() => openProtectedDocument(order.metrics.acceptance_doc_url).catch(error => setNotice(error.message))} className="text-purple-400 hover:text-purple-300 text-[11px] font-semibold flex items-center bg-purple-900/30 px-2 py-1 rounded flex-1 justify-center">
                             <Download size={12} className="mr-1" /> PDF
-                          </a>
+                          </button>
                         )}
                         {order.status === 'PENDING_ACCEPTANCE' && (
                           <button onClick={() => handleAcceptOrder(order.order_id)} className="text-lime-400 hover:text-lime-300 text-[11px] font-semibold flex items-center bg-lime-900/30 px-2 py-1 rounded flex-1 justify-center">

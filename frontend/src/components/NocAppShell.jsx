@@ -1,9 +1,9 @@
 import React from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, Users, AlertTriangle, HardHat } from 'lucide-react';
+import { LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio } from 'lucide-react';
 
 const pageNames = { '/': 'Operations overview', '/topology': 'Network topology', '/crm': 'Customers and services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident management' };
-const NocAppShell = ({ children }) => {
+const NocAppShell = ({ children, identity, onLogout }) => {
   const { pathname } = useLocation();
   return (
     <div className="flex h-screen w-screen bg-charcoal-900 text-white overflow-hidden">
@@ -26,6 +26,8 @@ const NocAppShell = ({ children }) => {
           <NavItem to="/provisioning" icon={<HardHat size={20} />} label="FTTH Provisioning" />
           
           <NavItem to="/incidents" icon={<AlertTriangle size={20} />} label="Incidents" />
+          <NavItem to="/monitoring" icon={<Radio size={20} />} label="Monitoring" />
+          {identity.roles.includes('NOC.Admin') && <NavItem to="/audit" icon={<History size={20} />} label="Audit history" />}
         </div>
 
         {/* Footer/Settings */}
@@ -38,7 +40,10 @@ const NocAppShell = ({ children }) => {
       <main className="flex-1 min-w-0 flex flex-col overflow-hidden relative">
         <header className="h-16 border-b border-charcoal-700 flex items-center justify-between px-8 bg-charcoal-800/50 backdrop-blur-sm">
           <h2 className="text-lg font-medium text-gray-200">{pageNames[pathname] || "NOC workspace"}</h2>
-          <span className="text-xs text-slate-400">Operator workspace</span>
+          <div className="flex items-center gap-4 text-xs">
+            <span className={identity.verified ? 'text-slate-400' : 'text-amber-300'}>{identity.verified ? identity.roles.join(', ') : 'Local preview · unverified identity'}</span>
+            <button onClick={onLogout} className="text-cyan-400">Sign out</button>
+          </div>
         </header>
 
         <div className="flex-1 overflow-auto p-4 md:p-8">

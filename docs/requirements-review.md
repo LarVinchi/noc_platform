@@ -35,10 +35,10 @@ an alternate route/cable is recorded redundancy, not proof that the path is live
 
 | Requirement | Remaining work |
 | --- | --- |
-| Microsoft 365 SSO and roles | Entra registrations/identifiers are not available; user confirmed continuing the local preview. Implement browser sign-in, API token validation and role enforcement before production |
-| Audit | Activity entries provide an operational record. Verified actors, immutable audit history and complete before/after changes are not implemented |
+| Microsoft 365 SSO and roles | Browser sign-in, API token validation and viewer/operator/admin enforcement implemented; live Entra registrations and acceptance tests pending |
+| Audit | Transactional append-only audit with restricted snapshots and verified Entra actors implemented; production database role separation, independent retention and exports pending |
 | FTTH escalation | Link formal FTTH escalation events to incidents, engineer assignments and timed escalation policies |
-| Monitoring | PRTG sensor/equipment/service mappings, durable events, deduplication/correlation, flapping/maintenance handling and verified recovery |
+| Monitoring | Explicit sensor mapping, durable intake, deduplication, older-event handling, incident/service ticket creation and alarm clearance implemented; live PRTG bridge, cross-sensor correlation, flapping/maintenance and verified recovery pending |
 | Customer notifications | Approved templates/drafts, affected-service targeting, delivery attempts/retries and review policy |
 | MTTR / SLA | Service outage intervals, acknowledgment/restoration timestamps, versioned service contracts, overlap/exclusion rules and deadline reporting |
 | Stage duration reporting | Structured transition history, stage dwell time, installation/escalation metrics and historical reconciliation |
@@ -48,7 +48,7 @@ an alternate route/cable is recorded redundancy, not proof that the path is live
 | Outlook / Graph | Shared mailbox permissions and human-reviewed drafting; no messages sent automatically |
 | Activity evidence | General activity image attachments and richer RCA/resolution editing from the HTML reference are not yet incorporated; FTTH installation photos already exist |
 | Inventory administration | Broader route/cable/core/splitter editing, exact customer/site coordinates, lifecycle management, cancellation and capacity release workflows |
-| Production hardening | TLS, restricted CORS, private document access, secure upload validation, rate/size limits, dependency audit remediation, pagination, observability and browser acceptance |
+| Production hardening | Restricted CORS and authenticated document access implemented; TLS, secure upload validation, rate/size limits, dependency audit remediation, broader pagination, observability and browser acceptance pending |
 | Recovery and retention | Agreed RPO/RTO, off-host database/document backups, tested restoration, retention and staged rollout |
 
 The container build's dependency audit reported vulnerabilities. Triage and

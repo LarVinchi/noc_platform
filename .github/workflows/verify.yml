@@ -21,7 +21,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python }}
-      - run: python -m pip install pytest==9.0.2
+      - run: python -m pip install -r requirements-unit.txt
       - run: python -m pytest tests/unit -q
 
   frontend-build:

@@ -18,9 +18,10 @@ figures come from incident records with timed refresh, errors and freshness.
 FTTH requests can be parsed from pasted text and logged with external references,
 provenance, duplicate protection and transactional internal numbering.
 
-Not yet implemented: Microsoft 365 authentication, monitoring ingestion,
-engineer escalation, SLA policies, notification delivery and RAG integration.
-The existing login is a simulation and does not protect backend APIs.
+Microsoft 365 sign-in and API role controls, transactional audit history and
+normalized monitoring ingestion are implemented. Live Entra/PRTG setup,
+engineer escalation, SLA policies, notification delivery and RAG integration remain.
+Local preview uses an explicitly unverified identity; production access requires Entra.
 Do not treat this development application as production ready.
 
 See [the requirements review](docs/requirements-review.md) for the document-to-feature
@@ -71,8 +72,7 @@ Alembic migrations, and starts the API and frontend after their health checks.
 The first build downloads dependencies and takes longer; subsequent starts reuse
 cached images. Preserve `.env` so its password continues to match the database.
 
-Open **http://localhost:5173**. The current development login accepts an operator
-name and any nonempty preview passcode; it is a placeholder until Microsoft 365 sign-in is implemented. The API
+Open **http://localhost:5173** and select **Open local preview**. The API
 documentation is at **http://localhost:18000/docs**.
 
 ```powershell
@@ -114,7 +114,7 @@ The migration refuses existing duplicate FN records rather than deleting them.
 
 ## Tests
 
-From `backend`, run `python -m pytest tests/unit -q`. These tests are independent
+From `backend`, install `requirements-unit.txt`, then run `python -m pytest tests/unit -q`. These tests are independent
 of a database. The existing `tests/test_db_logic.py` requires a configured,
 seeded PostGIS database and must be run only against a disposable test instance.
 
@@ -138,3 +138,10 @@ These tests verify parsing through the API, persistence, duplicate/conflict
 behavior and database uniqueness. Writes are rolled back after each test, and
 the tests refuse databases other than `noc_preview`. Containers also support
 `python -m pytest tests/unit -q`.
+
+## Access and monitoring milestone
+
+Local preview now opens with **Open local preview**. Use **Monitoring** to map a
+sensor and exercise Down/Up events; use **Audit history** to inspect committed
+changes. Microsoft 365 registration and live PRTG connection are still pending.
+See [configuration and operational limits](docs/access-and-monitoring.md).

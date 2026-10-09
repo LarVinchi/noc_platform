@@ -3,6 +3,14 @@ from sqlalchemy.engine import URL
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "NOC Platform API"
+    ENVIRONMENT: str = "production"
+    AUTH_MODE: str = "entra"
+    ENTRA_TENANT_ID: str = ""
+    ENTRA_API_CLIENT_ID: str = ""
+    ENTRA_SPA_CLIENT_ID: str = ""
+    ENTRA_SCOPE: str = "access_as_user"
+    CORS_ORIGINS: list[str] = []
+    MONITORING_INGEST_TOKEN: str = ""
     
     # Database configuration (Defaults to your local Docker setup)
     POSTGRES_USER: str = "noc_admin"
