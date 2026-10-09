@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.exc import IntegrityError
 
 from app.models.provisioning import ServiceOrder, ServiceOrderSequence, WorkflowStage
+from app.services.ftth_lifecycle import stage_event
 
 
 def normalized(value):
@@ -58,6 +59,8 @@ def create_order(order_in, db, raw_text=None):
             raw_request_text=raw_text,
         )
         db.add(order)
+        db.flush()
+        stage_event(db,order,None,'FTTH request recorded')
         db.commit()
         db.refresh(order)
         return order, True

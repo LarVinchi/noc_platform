@@ -12,6 +12,10 @@ from app.services.ticketing import generate_tt_number
 from app.services.incident_response import initialize_response, assign_engineer, invalidate_drafts, timeline, now_utc
 from app.services.response_metrics import utc
 from app.models.response import Engineer, ServiceOutage
+from app.models.ftth_operations import FtthIncidentLink
+from app.models.crm import Service
+from app.models.incidents import Ticket
+from app.core.security import actor_context
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
 
@@ -85,6 +89,17 @@ def update_incident(incident_id: UUID, update_in: IncidentUpdate, db: Session = 
 
     changes = update_in.model_dump(exclude_unset=True)
     final_status = changes.get('status', incident.status)
+    ftth_linked = db.query(FtthIncidentLink).filter_by(incident_id=incident_id).first()
+    if not ftth_linked:
+        ftth_linked = db.query(Ticket).join(Service,Service.service_id==Ticket.service_id).filter(
+            Ticket.incident_id==incident_id,Service.service_type.in_(['FTTH','ISP_FTTH'])).first()
+    if ftth_linked and final_status in {'resolved','closed'}:
+        method=changes.get('resolution_method',incident.resolution_method) or ''
+        cause=changes.get('rfo_root_cause',incident.rfo_root_cause) or ''
+        if len(method.strip())<5 or len(cause.strip())<3:
+            raise HTTPException(422,detail='FTTH resolution requires the action/evidence (at least 5 characters) and root cause (at least 3 characters)')
+    if ftth_linked and final_status=='aborted' and len((changes.get('notes',incident.notes) or '').strip())<5:
+        raise HTTPException(422,detail='Aborting a linked FTTH incident requires an explicit reason')
     if final_status in {'resolved','closed','aborted'} and db.query(ServiceOutage).filter_by(incident_id=incident_id, restored_at=None).first():
         raise HTTPException(409, detail='Verify restoration for every confirmed service outage before resolving, closing or aborting the incident')
     if final_status in {'resolved','closed'}:
@@ -97,6 +112,8 @@ def update_incident(incident_id: UUID, update_in: IncidentUpdate, db: Session = 
     if incident.status in {'resolved','closed','aborted'} and final_status in {'open','investigating','pending'}:
         raise HTTPException(409, detail='Log a new incident for a recurring fault; completed incident history is preserved')
     if final_status != incident.status:
+        if ftth_linked and final_status in {'resolved','closed','aborted'}:
+            changes['closed_by']=actor_context.get()['id']
         timeline(db, incident, 'status_changed', f'Incident status {incident.status} → {final_status}.')
         if final_status in {'resolved','closed','aborted'}:
             invalidate_drafts(db,incident,['engineer','escalation'])

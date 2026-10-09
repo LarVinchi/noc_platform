@@ -14,6 +14,7 @@ from app.services.ftth_intake import parse_ftth_request
 from app.services.service_orders import create_order
 from app.services.activation import activate_ftth
 from app.services.operational_activity import record_event
+from app.services.ftth_lifecycle import stage_event,guard_acceptance
 
 # Import infrastructure to validate allocations
 from app.models.infrastructure import NAP, DropCable
@@ -109,7 +110,9 @@ def allocate_service_order(
         order.pfs_id, order.pfp_id = nap.pfs_id, nap.pfs.pfp_id
         order.drop_tech_name = alloc_in.installer
         order.planned_install_date = alloc_in.planned_install_date.astimezone(timezone.utc).replace(tzinfo=None)
+        stage_event_previous = order.status
         order.status = WorkflowStage.SCHEDULED
+        stage_event(db,order,stage_event_previous,'Infrastructure allocated and installer scheduled')
         record_event(db, f"FTTH scheduled: {order.fn_number or order.service_order_number}",
                      f"{order.drop_tech_name}; {nap.nap_code} port {order.nap_port}; drop {drop.drop_cable_code}", order.order_id)
         db.commit()
@@ -133,7 +136,7 @@ async def complete_installation(
     db: Session = Depends(get_db)
 ):
     # 1. Find the Service Order
-    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).first()
+    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Service Order not found")
 
@@ -166,7 +169,9 @@ async def complete_installation(
     
     # Update the completion date
     order.completion_date = datetime.utcnow()
+    stage_event_previous = order.status
     order.status = WorkflowStage.PENDING_ACCEPTANCE
+    stage_event(db,order,stage_event_previous,'Installation checklist, photos and optical result recorded')
 
     record_event(db, f"Installation awaiting review: {order.fn_number or order.service_order_number}",
                  "Installation evidence recorded; NOC review required.", order.order_id)
@@ -201,8 +206,10 @@ def accept_installation(order_id: UUID, db: Session = Depends(get_db)):
 
     if not order.metrics or not order.metrics.checklist_completed or not order.nap_id or not order.drop_cable_id:
         raise HTTPException(status_code=409, detail="Installation evidence and infrastructure assignment are required for acceptance")
+    guard_acceptance(db,order)
     activate_ftth(order, db)
     order.status = WorkflowStage.MONITORED
+    stage_event(db,order,WorkflowStage.PENDING_ACCEPTANCE,'NOC accepted installation; monitoring health remains unverified')
     record_event(db, f"FTTH accepted: {order.fn_number or order.service_order_number}",
                  "CRM service and drop allocation created. Monitoring verification is pending.", order.order_id, completed=True)
     db.commit()
@@ -216,7 +223,7 @@ class StatusUpdate(BaseModel):
 @router.patch("/{order_id}/status", response_model=ServiceOrderResponse)
 def update_order_status(order_id: UUID, status_update: StatusUpdate, db: Session = Depends(get_db)):
     """Generic endpoint to update an order's status via drag-and-drop."""
-    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).first()
+    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Service Order not found")
         
@@ -226,7 +233,9 @@ def update_order_status(order_id: UUID, status_update: StatusUpdate, db: Session
     }
     if status_update.status not in allowed.get(order.status, set()):
         raise HTTPException(status_code=409, detail="Use assignment, installation evidence and NOC approval to advance this order")
+    previous = order.status
     order.status = status_update.status
+    stage_event(db,order,previous,'Installation started' if order.status==WorkflowStage.IN_PROGRESS else 'Returned to scheduling; previous stage visit retained')
     record_event(db, f"FTTH stage: {order.fn_number or order.service_order_number}",
                  f"Moved to {order.status.value}", order.order_id)
     db.commit()
