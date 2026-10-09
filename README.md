@@ -150,3 +150,10 @@ The topology now fills the workspace, restores the original FibreViz controls,
 and includes a redesigned logical network with named cables and core labels.
 Use the command-bar sidebar toggle or the topology full-screen button for more
 space. See [the topology workspace guide](docs/topology-workspace.md).
+
+The **Response centre** adds engineer ownership, acknowledgment, versioned preview
+targets, a timed escalation worker, evidence-based customer outages, restoration,
+MTTR and communication review. All services start through the same `dev.ps1`
+command. See [the incident response guide](docs/incident-response.md) for setup,
+reporting rules and the remaining production requirements. Notification drafts
+are not delivered, and preview targets are not contractual SLAs.

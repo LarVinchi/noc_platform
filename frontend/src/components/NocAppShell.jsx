@@ -3,9 +3,9 @@ import { NavLink, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, Network, LogOut, Clock3, ChevronRight } from 'lucide-react';
 import { incidentsApi } from '../api/client';
 
-const pages = { '/': 'Operations overview', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
+const pages = { '/': 'Operations overview', '/response': 'Response centre', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
 const navigation = [
-  { group: 'OPERATIONS', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/provisioning', HardHat, 'Provisioning']] },
+  { group: 'OPERATIONS', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/response', Clock3, 'Response centre'], ['/provisioning', HardHat, 'Provisioning']] },
   { group: 'NETWORK', items: [['/topology', Map, 'Network topology'], ['/monitoring', Radio, 'Monitoring'], ['/crm', Users, 'Customers & services']] },
 ];
 

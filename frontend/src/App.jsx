@@ -11,6 +11,7 @@ import { initializeAuth, accessToken, signIn, signOut } from './api/auth';
 import { setTokenProvider } from './api/client';
 import AuditHistory from './pages/AuditHistory';
 import Monitoring from './pages/Monitoring';
+import ResponseCenter from './pages/ResponseCenter';
 
 function App() {
   // Authentication State
@@ -38,7 +39,8 @@ function App() {
           <Route path="/crm" element={<CrmServices />} />
           <Route path="/topology" element={<NetworkTopology />} />
           <Route path="/provisioning" element={<FTTHProvisioning />} />
-          <Route path="/incidents" element={<IncidentManagement />} />
+          <Route path="/incidents" element={<IncidentManagement identity={identity} />} />
+          <Route path="/response" element={<ResponseCenter identity={identity} />} />
           <Route path="/audit" element={<AuditHistory />} />
           <Route path="/monitoring" element={<Monitoring identity={identity} />} />
         </Routes>

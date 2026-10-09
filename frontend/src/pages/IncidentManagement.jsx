@@ -4,6 +4,8 @@ import {
   Clock, Zap, Wrench, Wifi, HelpCircle, ChevronRight
 } from 'lucide-react';
 import { incidentsApi } from '../api/client';
+import IncidentResponseDrawer from '../components/IncidentResponseDrawer';
+import { operationError } from '../api/operations';
 
 // --- Category metadata: mirrors TICKET_CATEGORY_CODES on the backend ---
 // NOTE: Tailwind's content scanner only picks up complete, literal class name
@@ -60,7 +62,8 @@ const EMPTY_RESOLUTION = {
   closed_by: '',
 };
 
-const IncidentManagement = () => {
+const IncidentManagement = ({ identity }) => {
+  const [responseIncident,setResponseIncident] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -128,15 +131,12 @@ const IncidentManagement = () => {
     setSubmitting(true);
     try {
       const payload = { ...resolution };
-      if (resolution.status === 'resolved' || resolution.status === 'closed') {
-        payload.resolved_at = new Date().toISOString();
-      }
       await incidentsApi.updateIncident(selectedIncident.incident_id, payload);
       setIsResolveOpen(false);
       setSelectedIncident(null);
       fetchIncidents();
-    } catch {
-      alert('Could not update this incident. Please try again.');
+    } catch (error) {
+      alert(operationError(error));
     } finally {
       setSubmitting(false);
     }
@@ -280,6 +280,7 @@ const IncidentManagement = () => {
                         {incident.reported_at ? new Date(incident.reported_at).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4">
+                        <button onClick={()=>setResponseIncident(incident.incident_id)} className="text-cyan-300 text-xs mb-2 block">Manage response</button>
                         {isOpen ? (
                           <button onClick={() => openResolve(incident)} className="text-lime-400 hover:text-lime-300 text-xs font-semibold flex items-center bg-lime-900/30 px-3 py-1.5 rounded">
                             <CheckCircle2 size={14} className="mr-1" /> Resolve
@@ -412,6 +413,7 @@ const IncidentManagement = () => {
       )}
 
       {/* --- RESOLVE / UPDATE MODAL --- */}
+      {responseIncident && <IncidentResponseDrawer key={responseIncident} incidentId={responseIncident} identity={identity} onClose={()=>setResponseIncident(null)} onChange={fetchIncidents}/>}
       {isResolveOpen && selectedIncident && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-charcoal-900 border border-charcoal-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">

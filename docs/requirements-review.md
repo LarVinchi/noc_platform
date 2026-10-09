@@ -19,6 +19,9 @@ and ticket prefixes are not application configuration or operational instruction
 | Fault impact | Route and individual cable analysis, unique customers/services, recorded alternate paths; health remains unverified |
 | Daily activity overview | Persisted shift activity, six statuses, filters, maintenance/reminders, team counts and copyable handover |
 | Shared updates | 30-second refresh on activity, FTTH and geographic views; visible API failures |
+| Incident response | Engineer directory/assignment, server-recorded acknowledgment, pinned versioned goals, timed escalation worker, evidence timeline and role guards |
+| Service outage reporting | Confirmed/restored intervals, closure guards, overlapping downtime union, explicit exclusions and restored-episode MTTR; availability coverage remains unverified |
+| Communication review | Assignment/escalation/outage/restoration drafts with reviewed actor/time and superseded-draft protection; no delivery transport |
 | Delivery baseline | Single-command isolated preview, migrations, CI, unit/database-backed tests and frontend lint/build |
 
 Geographic customer pins use serving-NAP coordinates or a route endpoint anchor.
@@ -39,8 +42,8 @@ an alternate route/cable is recorded redundancy, not proof that the path is live
 | Audit | Transactional append-only audit with restricted snapshots and verified Entra actors implemented; production database role separation, independent retention and exports pending |
 | FTTH escalation | Link formal FTTH escalation events to incidents, engineer assignments and timed escalation policies |
 | Monitoring | Explicit sensor mapping, durable intake, deduplication, older-event handling, incident/service ticket creation and alarm clearance implemented; live PRTG bridge, cross-sensor correlation, flapping/maintenance and verified recovery pending |
-| Customer notifications | Approved templates/drafts, affected-service targeting, delivery attempts/retries and review policy |
-| MTTR / SLA | Service outage intervals, acknowledgment/restoration timestamps, versioned service contracts, overlap/exclusion rules and deadline reporting |
+| Customer notifications | Reviewable affected-service drafts implemented; approved production wording, delivery transport, durable attempts/retries and delivery acceptance remain |
+| MTTR / SLA | Confirmed intervals, acknowledgment/restoration times, immutable target versions, overlap/exclusion rules and deadline reporting implemented; agreed contracts, eligible hours, coverage verification and contractual availability reporting remain |
 | Stage duration reporting | Structured transition history, stage dwell time, installation/escalation metrics and historical reconciliation |
 | Historical incident migration | Importer exists; reconcile the actual workbook, including the 514 records described in v2. Do not assume import completion |
 | OneDrive / knowledge base | Locate separate RAG proof of concept, implement validated ingestion, versioning, provenance, access-filtered retrieval and quality evaluation |
