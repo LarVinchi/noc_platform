@@ -48,7 +48,31 @@ def test_multiple_cores_do_not_duplicate_service_nodes_or_edges():
     assert endpoints[0]["type"] == "dark_fiber_endpoint"
     assert endpoints[0]["data"]["badge"] == "Core 1; Core 2"
     assert len([edge for edge in result["edges"] if edge["target"] == "srv-service"]) == 1
+    service_link = next(edge for edge in result["edges"] if edge["target"] == "srv-service")
+    assert service_link["data"]["core_numbers"] == [1, 2]
+    assert "total_cores" not in service_link["data"]  # selected fibres are not full cable capacity
 
 
 def test_empty_cable_has_no_invented_descendants():
     assert build_cable_topology(Record(cable_id="empty", cores=[])) == {"nodes": [], "edges": []}
+
+
+def test_distribution_labels_follow_recorded_cable_links():
+    selected = cable("selected")
+    selected.cable_name = "BACKBONE-96"
+    pfp = selected.cores[0].pfps[0]
+    pfs = pfp.pfss[0]
+    pfp.dist_fibers_out = [
+        Record(dest_pfs_id=pfs.pfs_id, cable_name="DISTRIBUTION-A", fiber_number=7),
+        Record(dest_pfs_id="unrelated", cable_name="OTHER-CABLE", fiber_number=9),
+    ]
+    result = build_cable_topology(selected)
+    feeder = next(edge for edge in result["edges"] if edge["source"] == "selected")
+    distribution = next(edge for edge in result["edges"] if edge["target"] == pfs.pfs_id)
+    unrecorded = next(edge for edge in result["edges"] if edge["source"] == pfs.pfs_id)
+    assert feeder["data"]["cable_name"] == "BACKBONE-96"
+    assert feeder["data"]["core_numbers"] == [1]
+    assert distribution["data"]["cable_name"] == "DISTRIBUTION-A"
+    assert distribution["data"]["core_numbers"] == [7]
+    assert unrecorded["data"]["cable_name"] is None
+    assert unrecorded["data"]["core_numbers"] == []

@@ -90,7 +90,7 @@ def readiness(db: Session = Depends(get_db)):
 @app.get("/api/topology/")
 def get_network_topology(db: Session = Depends(get_db)):
     routes = db.query(FiberRoute).filter(FiberRoute.status == 'active').all()
-    cables = db.query(FiberCable).filter(FiberCable.status == 'active').all()
+    cables = db.query(FiberCable).options(selectinload(FiberCable.cores)).filter(FiberCable.status == 'active').all()
 
     nodes = []
     edges = []
@@ -103,7 +103,8 @@ def get_network_topology(db: Session = Depends(get_db)):
             "data": {
                 "label": route.route_name,
                 "type": "ROUTE",
-                "badge": route.service_area
+                "badge": route.service_area, "inventory_status": route.status,
+                "route_id": str(route.route_id), "length_km": float(route.length_km) if route.length_km else None
             }
         })
 
@@ -118,7 +119,11 @@ def get_network_topology(db: Session = Depends(get_db)):
             "data": {
                 "label": cable.cable_name,
                 "type": "CABLE",
-                "badge": f"{cable.total_cores}-Core"
+                "badge": f"{cable.total_cores}-Core", "total_cores": cable.total_cores,
+                "cable_id": cable_node_id, "route_id": route_id_str,
+                "cable_type": cable.cable_type, "inventory_status": cable.status,
+                "recorded_cores": len(cable.cores),
+                "allocated_cores": sum(core.allocation_status == 'allocated' for core in cable.cores)
             }
         })
 
@@ -126,7 +131,9 @@ def get_network_topology(db: Session = Depends(get_db)):
             "id": f"e-rt-{cable_node_id}",
             "source": route_id_str,
             "target": cable_node_id,
-            "animated": True,
+            "animated": False,
+            "data": {"kind": "cable", "cable_name": cable.cable_name,
+                     "total_cores": cable.total_cores, "cable_id": cable_node_id},
             "style": {"stroke": "#06b6d4", "strokeWidth": 2}
         })
 
@@ -146,6 +153,8 @@ def expand_cable_topology(cable_id: UUID, db: Session = Depends(get_db)):
             .selectinload(PFP.pfss).selectinload(PFS.naps)
             .selectinload(NAP.drop_cables).selectinload(DropCable.allocations)
             .selectinload(DropAllocation.service).selectinload(Service.customer),
+        selectinload(FiberCable.cores).selectinload(FiberCore.pfps).selectinload(PFP.dist_fibers_out),
+        selectinload(FiberCable.cores).selectinload(FiberCore.pfps).selectinload(PFP.pfss).selectinload(PFS.dist_fibers_out),
     ).filter(FiberCable.cable_id == cable_id).first()
     if cable is None:
         raise HTTPException(status_code=404, detail="Cable not found")
