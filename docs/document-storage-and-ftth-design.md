@@ -216,6 +216,37 @@ authorized version. Evaluation covers exact references, Excel totals, recurring
 faults, obsolete revisions, missing evidence, restricted documents, revoked access
 and prompt injection, as well as retrieval latency and useful staff feedback.
 
+## Proposed RAG interface
+
+Use a dedicated **Knowledge** workspace with a conversation panel and a source
+panel. Users can search/ask across approved knowledge, filter document types,
+open exact authorized versions/pages/sheets, inspect conflicting evidence and
+review generated RCA/handover/report drafts. The existing **Documents** page
+continues to manage uploads, metadata and revision history.
+
+Also expose a collapsible **Ask about this case** drawer within incident, FTTH
+and customer/service pages. It receives the current record ID as explicit scoped
+context and combines authorized operational facts with approved related sources.
+Preserve the active case/timeline while the drawer is open. No fixed floating
+overlay is needed to replace the operating console.
+
+The assistant shows scope, source freshness and exact citations beside its
+answer. No adequate evidence means an explicit unavailable/uncertain result.
+Generated documents are drafts with factual fields from structured records;
+approval, signatures and message delivery remain separate actions. Conversation
+history requires scoped access, controlled retention and revocation behavior;
+do not expose another department's context through saved sessions or caches.
+
+For example, on an FTTH case: “Which earlier RCA describes this NAP fault?” or
+“What is missing before acceptance?” In Knowledge: “Find the approved handover
+for this FN” or “Draft a weekly report from the selected reporting window.”
+Exact totals use authorized SQL reporting, not estimated sums from retrieved text.
+
+This interface is a proposal, not a working RAG chat. Implement the integration
+adapter and evidence/citation behavior with the colleague's tools before showing
+an enabled AI conversation. Until then, file management, operational reporting
+and manual triage remain usable independently.
+
 ## MTN handover lifecycle
 
 Retain installation acceptance and customer handover as distinct document types.

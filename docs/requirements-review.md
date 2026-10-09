@@ -49,7 +49,7 @@ an alternate route/cable is recorded redundancy, not proof that the path is live
 | Historical incident migration | Importer exists; reconcile the actual workbook, including the 514 records described in v2. Do not assume import completion |
 | OneDrive / knowledge base | Private catalogue, revisions and access-controlled files implemented; colleague's RAG/audit tools pending. Completeness/approval, granular/source ACLs, extraction, evaluated retrieval and OneDrive sync remain |
 | Generated documents | Approved MTN customer handover template pending; existing pre-acceptance PDF is not final customer handover. Versioned generation/review/delivery plus RCA, shift handover/work order and periodic reports remain |
-| Outlook / Graph | NOC triage queue and selective mail evidence retention designed; mailbox permissions, connector, evaluated classification and reviewed drafting remain. No mailbox connected or messages sent |
+| Outlook / Graph | Private manual triage preview, explainable rules and review links implemented; live mailbox connector, evaluated classification, evidence retention/expiry and reviewed drafting remain. No mailbox connected or messages sent |
 | Activity evidence | General activity image attachments and richer RCA/resolution editing from the HTML reference are not yet incorporated; FTTH installation photos already exist |
 | Inventory administration | Broader route/cable/core/splitter editing, exact customer/site coordinates, lifecycle management, cancellation and capacity release workflows |
 | Production hardening | Restricted CORS and authenticated document access implemented; TLS, secure upload validation, rate/size limits, dependency audit remediation, broader pagination, observability and browser acceptance pending |
