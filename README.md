@@ -145,3 +145,8 @@ Local preview now opens with **Open local preview**. Use **Monitoring** to map a
 sensor and exercise Down/Up events; use **Audit history** to inspect committed
 changes. Microsoft 365 registration and live PRTG connection are still pending.
 See [configuration and operational limits](docs/access-and-monitoring.md).
+
+The topology now fills the workspace, restores the original FibreViz controls,
+and includes a redesigned logical network with named cables and core labels.
+Use the command-bar sidebar toggle or the topology full-screen button for more
+space. See [the topology workspace guide](docs/topology-workspace.md).

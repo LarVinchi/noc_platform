@@ -13,6 +13,7 @@ export default defineConfig({
     } },
   },
   server: {
+    watch: { usePolling: env.DEV_WATCH_POLLING === 'true', interval: 500 },
     proxy: {
       '/api': env.API_PROXY_TARGET || 'http://localhost:8000',
       '/static': env.API_PROXY_TARGET || 'http://localhost:8000',

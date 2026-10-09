@@ -70,7 +70,6 @@ export default function OperationsDashboard() {
 
   return (
     <div className="space-y-6 max-w-screen-2xl mx-auto">
-      <ShiftActivityLog />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-cyan-400 mb-2">Network operations centre</p>
@@ -91,7 +90,7 @@ export default function OperationsDashboard() {
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {cards.map(({ title, value, description, icon: Icon, color }) => (
-          <section key={title} className="rounded-xl border border-slate-700/70 bg-slate-800/40 p-5">
+          <section key={title} className={`noc-stat ${color}`}>
             <div className="flex items-center justify-between text-sm text-slate-300"><h2>{title}</h2>{createElement(Icon, { size: 18, className: color })}</div>
             <p className={`text-4xl font-semibold tabular-nums mt-4 ${color}`}>{incidents === null ? '—' : value}</p>
             <p className="text-xs text-slate-400 mt-3">{description}</p>
@@ -124,6 +123,7 @@ export default function OperationsDashboard() {
         </div>
         <p className="px-5 py-3 text-xs text-slate-500 border-t border-slate-800">Elapsed time starts at the recorded report time. Service availability and SLA measurements will appear once monitoring and service policies are connected.</p>
       </section>
+      <ShiftActivityLog />
     </div>
   );
 }

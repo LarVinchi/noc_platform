@@ -9,9 +9,11 @@ export default {
       colors: {
         // Our custom NOC dark mode palette
         charcoal: {
-          700: '#334155',
-          800: '#1e293b',
-          900: '#0f172a',
+          600: '#40546b',
+          700: '#25364a',
+          800: '#142132',
+          900: '#0d1724',
+          950: '#080f19',
         },
         cyan: {
           400: '#22d3ee',
