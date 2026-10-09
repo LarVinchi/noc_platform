@@ -167,3 +167,10 @@ The first document foundation is now available under **Documents**: private
 uploads, immutable revisions, order/service/incident links, access checks and
 verified downloads. See [the catalogue guide](docs/document-catalogue.md).
 Approval, malware scanning, RAG indexing and OneDrive sync remain pending.
+
+**FTTH operations** now reports installation/acceptance totals, recorded stage
+visits and linked customer faults. Use **History / incidents** to escalate a
+pre-activation blocker or report a service fault and record resolution evidence.
+See [the FTTH operations guide](docs/ftth-operations.md). Proposed NOC mailbox
+flagging and selective evidence retention are described in [mail triage](docs/noc-mail-triage.md);
+no mailbox is connected.

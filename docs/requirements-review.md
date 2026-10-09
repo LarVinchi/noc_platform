@@ -41,15 +41,15 @@ an alternate route/cable is recorded redundancy, not proof that the path is live
 | --- | --- |
 | Microsoft 365 SSO and roles | Browser sign-in, API token validation and viewer/operator/admin enforcement implemented; live Entra registrations and acceptance tests pending |
 | Audit | Transactional append-only audit with restricted snapshots and verified Entra actors implemented; production database role separation, independent retention and exports pending |
-| FTTH escalation | Link formal FTTH escalation events to incidents, engineer assignments and timed escalation policies |
+| FTTH escalation | Repeat-safe order-to-incident links, pre-activation blockers, post-activation service tickets, acceptance guard and resolution evidence implemented; dedicated installation-target policies/holds remain |
 | Monitoring | Explicit sensor mapping, durable intake, deduplication, older-event handling, incident/service ticket creation and alarm clearance implemented; live PRTG bridge, cross-sensor correlation, flapping/maintenance and verified recovery pending |
 | Customer notifications | Reviewable affected-service drafts implemented; approved production wording, delivery transport, durable attempts/retries and delivery acceptance remain |
 | MTTR / SLA | Confirmed intervals, acknowledgment/restoration times, immutable target versions, overlap/exclusion rules and deadline reporting implemented; agreed contracts, eligible hours, coverage verification and contractual availability reporting remain |
-| FTTH reporting and fault history | Structured transition/acceptance history, provider-filtered completed/accepted totals, stage durations, order-to-incident links, installation blockers and post-activation faults; see the detailed design below |
+| FTTH reporting and fault history | Structured transitions, provider-filtered totals, completed stage visits, linked faults and incident-category MTTR implemented; historical reconciliation, explicit mobilization/holds, rework and cancellation remain |
 | Historical incident migration | Importer exists; reconcile the actual workbook, including the 514 records described in v2. Do not assume import completion |
 | OneDrive / knowledge base | Private catalogue, revisions and access-controlled files implemented; colleague's RAG/audit tools pending. Completeness/approval, granular/source ACLs, extraction, evaluated retrieval and OneDrive sync remain |
 | Generated documents | Approved MTN customer handover template pending; existing pre-acceptance PDF is not final customer handover. Versioned generation/review/delivery plus RCA, shift handover/work order and periodic reports remain |
-| Outlook / Graph | Shared mailbox permissions and human-reviewed drafting; no messages sent automatically |
+| Outlook / Graph | NOC triage queue and selective mail evidence retention designed; mailbox permissions, connector, evaluated classification and reviewed drafting remain. No mailbox connected or messages sent |
 | Activity evidence | General activity image attachments and richer RCA/resolution editing from the HTML reference are not yet incorporated; FTTH installation photos already exist |
 | Inventory administration | Broader route/cable/core/splitter editing, exact customer/site coordinates, lifecycle management, cancellation and capacity release workflows |
 | Production hardening | Restricted CORS and authenticated document access implemented; TLS, secure upload validation, rate/size limits, dependency audit remediation, broader pagination, observability and browser acceptance pending |

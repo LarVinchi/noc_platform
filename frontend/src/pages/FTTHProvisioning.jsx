@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   List, Layout, AlertTriangle, Plus, Activity, 
   UploadCloud, CheckCircle, X, Download, UserPlus, ShieldCheck, GripVertical
@@ -30,7 +31,7 @@ const FTTHProvisioning = () => {
   const fetchOrders = async () => {
     try {
       const response = await provisioningApi.getOrders();
-      setOrders(response.data);
+      setOrders(response.data.filter(order => order.service_category === 'FTTH'));
       setLoadError('');
     } catch (error) {
       console.error("Failed to fetch orders:", error);
@@ -141,6 +142,7 @@ const FTTHProvisioning = () => {
         </div>
         
         <div className="flex items-center space-x-4">
+          <Link to="/ftth-operations" className="rounded-lg border border-cyan-800 px-3 py-2 text-sm text-cyan-300">Totals &amp; incidents</Link>
           <div className="flex bg-charcoal-900 p-1 rounded-lg border border-charcoal-700">
             <button onClick={() => setViewType('list')} className={`p-2 rounded flex items-center transition-colors ${viewType === 'list' ? 'bg-charcoal-700 text-cyan-400 shadow' : 'text-gray-500 hover:text-white'}`}>
               <List size={16} className="mr-2" /> Table
