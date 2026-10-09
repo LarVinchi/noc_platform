@@ -23,6 +23,34 @@ engineer escalation, SLA policies, notification delivery and RAG integration.
 The existing login is a simulation and does not protect backend APIs.
 Do not treat this development application as production ready.
 
+See [the requirements review](docs/requirements-review.md) for the document-to-feature
+checklist and remaining release gates.
+
+## Advance orders and inspect customer impact
+
+On the FTTH table or board, use **Assign & schedule** for a new request. Select a
+NAP and free port, register/select its drop cable, name the installer and set the
+installation time in Lagos/WAT. **Create a NAP** registers a terminal under an
+existing splitter. Occupied ports and incompatible drop selections are rejected.
+
+Use **Start installation**, then **Finish Install** with the checklist and four
+photos. NOC **Approve** creates the linked CRM service/drop allocation. Generic
+Kanban movement cannot skip assignment, evidence or acceptance.
+
+In **CRM & Services → Provision Service**, create/select a customer and provision
+DIA, dark fibre or Layer 2 against compatible free cores, with an optional backup
+core. This records dependencies; network device configuration remains external.
+
+**Network Topology** offers Geographic and Logical views. Import KMZ/KML or view
+the approximate Lekki demo. Select an imported line and explicitly link it to the
+correct inventory route. Customer pins then follow recorded allocations. Route
+inspection lists potentially affected customers; **Inspect this cable's impact**
+narrows the analysis to an individual cable. Monitoring must verify downtime.
+
+The overview now includes the shared daily activity log, maintenance/reminders,
+team summary and shift handover. Provisioning events feed the log automatically.
+Incident/escalation entries use the existing company TT numbering convention.
+
 ## Run the complete preview with one command
 
 Start Docker Desktop. In the working checkout run:

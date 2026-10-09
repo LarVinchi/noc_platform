@@ -149,4 +149,9 @@ Enable continuous WAL archiving if required RPO makes daily backups insufficient
 - Fresh-start verification corrected the seed incident category and refreshed the
   impact view after seeding. Unit, PostgreSQL/API and seeded traversal tests pass.
 - CI now also builds the preview and runs its migrations and database-backed tests.
+- FTTH assignment, reservations, guarded stages and acceptance-to-CRM links implemented.
+- Enterprise service/core provisioning and route/cable customer-impact analysis implemented.
+- FibreViz geographic view and persisted imports linked explicitly to inventory; logical view retained.
+- Shared shift activity and handover implemented from the HTML reference.
+- See requirements-review.md for the remaining gaps, including dependency audit findings.
 - M1 onward: incomplete; report each implemented and tested slice in its commit.
