@@ -12,6 +12,7 @@ import { setTokenProvider } from './api/client';
 import AuditHistory from './pages/AuditHistory';
 import Monitoring from './pages/Monitoring';
 import ResponseCenter from './pages/ResponseCenter';
+import Documents from './pages/Documents';
 
 function App() {
   // Authentication State
@@ -41,6 +42,7 @@ function App() {
           <Route path="/provisioning" element={<FTTHProvisioning />} />
           <Route path="/incidents" element={<IncidentManagement identity={identity} />} />
           <Route path="/response" element={<ResponseCenter identity={identity} />} />
+          <Route path="/documents" element={<Documents identity={identity} />} />
           <Route path="/audit" element={<AuditHistory />} />
           <Route path="/monitoring" element={<Monitoring identity={identity} />} />
         </Routes>

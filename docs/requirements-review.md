@@ -22,6 +22,7 @@ and ticket prefixes are not application configuration or operational instruction
 | Incident response | Engineer directory/assignment, server-recorded acknowledgment, pinned versioned goals, timed escalation worker, evidence timeline and role guards |
 | Service outage reporting | Confirmed/restored intervals, closure guards, overlapping downtime union, explicit exclusions and restored-episode MTTR; availability coverage remains unverified |
 | Communication review | Assignment/escalation/outage/restoration drafts with reviewed actor/time and superseded-draft protection; no delivery transport |
+| Document foundation | Private catalogue/uploads, immutable revisions, record links, owner/admin access, explicit NOC sharing, checksum-verified downloads and audit; no approval or RAG indexing |
 | Delivery baseline | Single-command isolated preview, migrations, CI, unit/database-backed tests and frontend lint/build |
 
 Geographic customer pins use serving-NAP coordinates or a route endpoint anchor.
@@ -46,7 +47,7 @@ an alternate route/cable is recorded redundancy, not proof that the path is live
 | MTTR / SLA | Confirmed intervals, acknowledgment/restoration times, immutable target versions, overlap/exclusion rules and deadline reporting implemented; agreed contracts, eligible hours, coverage verification and contractual availability reporting remain |
 | FTTH reporting and fault history | Structured transition/acceptance history, provider-filtered completed/accepted totals, stage durations, order-to-incident links, installation blockers and post-activation faults; see the detailed design below |
 | Historical incident migration | Importer exists; reconcile the actual workbook, including the 514 records described in v2. Do not assume import completion |
-| OneDrive / knowledge base | Colleague owns RAG/audit tools and will supply them later; private document catalogue, completeness checks, versioning, provenance, access-filtered retrieval and evaluated ingestion remain |
+| OneDrive / knowledge base | Private catalogue, revisions and access-controlled files implemented; colleague's RAG/audit tools pending. Completeness/approval, granular/source ACLs, extraction, evaluated retrieval and OneDrive sync remain |
 | Generated documents | Approved MTN customer handover template pending; existing pre-acceptance PDF is not final customer handover. Versioned generation/review/delivery plus RCA, shift handover/work order and periodic reports remain |
 | Outlook / Graph | Shared mailbox permissions and human-reviewed drafting; no messages sent automatically |
 | Activity evidence | General activity image attachments and richer RCA/resolution editing from the HTML reference are not yet incorporated; FTTH installation photos already exist |

@@ -162,3 +162,8 @@ Document storage/RAG and the remaining FTTH handover, reporting and fault-histor
 requirements are investigated in [the document and FTTH design](docs/document-storage-and-ftth-design.md).
 The colleague's RAG/audit tools and approved MTN handover template are pending;
 the design separates work that can proceed now from those dependencies.
+
+The first document foundation is now available under **Documents**: private
+uploads, immutable revisions, order/service/incident links, access checks and
+verified downloads. See [the catalogue guide](docs/document-catalogue.md).
+Approval, malware scanning, RAG indexing and OneDrive sync remain pending.
