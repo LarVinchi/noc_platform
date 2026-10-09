@@ -78,7 +78,8 @@ def authenticate(headers, method, path):
             raise HTTPException(401, "Bearer access token required", headers={"WWW-Authenticate": "Bearer"})
         actor = validate_token(token)
     roles = set(actor["roles"])
-    if (path.startswith("/api/audit") or (path.startswith("/api/monitoring/mappings") and method not in {"GET", "HEAD"})) and "NOC.Admin" not in roles:
+    admin_write = any(path.startswith(prefix) for prefix in ("/api/monitoring/mappings", "/api/operations/engineers", "/api/operations/policies")) and method not in {"GET", "HEAD", "OPTIONS"}
+    if (path.startswith("/api/audit") or admin_write) and "NOC.Admin" not in roles:
         raise HTTPException(403, "Administrator role required")
     if method not in {"GET", "HEAD", "OPTIONS"} and not roles.intersection({"NOC.Operator", "NOC.Admin"}):
         raise HTTPException(403, "Operator role required")

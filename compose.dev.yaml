@@ -27,7 +27,7 @@ services:
       MONITORING_INGEST_TOKEN: ${MONITORING_INGEST_TOKEN:-}
       POSTGRES_PORT: '5432'
       POSTGRES_DB: noc_preview
-    command: [alembic, upgrade, head]
+    command: [sh, -c, 'alembic upgrade head && python -m app.preview_response_seed']
     depends_on:
       db:
         condition: service_healthy
@@ -50,6 +50,23 @@ services:
       interval: 5s
       timeout: 5s
       retries: 30
+
+  response-worker:
+    build: ./backend
+    environment: *backend_environment
+    command: [python, -u, -m, app.response_worker]
+    restart: unless-stopped
+    volumes:
+      - ./backend/app:/app/app:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "from app.core.db import engine; from sqlalchemy import text; c=engine.connect(); assert c.execute(text(\"SELECT updated_at > now() - interval '120 seconds' FROM worker_heartbeats WHERE worker_name='response-escalation'\")).scalar(); c.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 4
+      start_period: 30s
 
   frontend:
     build: ./frontend

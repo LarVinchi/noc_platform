@@ -8,6 +8,7 @@ from app.core.db import get_db
 from app.models.activity import ActivityEntry
 from app.models.incidents import Incident
 from app.services.ticketing import generate_tt_number
+from app.services.incident_response import initialize_response
 
 router = APIRouter(prefix="/activities", tags=["Shift activity"])
 Status = Literal["Open", "In Progress", "Pending", "Completed", "Partially Closed", "Aborted"]
@@ -67,9 +68,10 @@ def create_activity(payload: ActivityCreate, db: Session = Depends(get_db)):
         incident = Incident(tt_number=generate_tt_number(db, "TECHNICAL"), ticket_category="TECHNICAL",
                             incident_type="Other", short_description=payload.title,
                             description=payload.description, severity=payload.severity,
-                            opened_by=payload.person, responsible_person=payload.person, status="open")
+                            opened_by=payload.person, status="open")
         db.add(incident)
         db.flush()
+        initialize_response(db, incident)
         payload.incident_id = incident.incident_id
     entry = ActivityEntry(**payload.model_dump())
     db.add(entry)

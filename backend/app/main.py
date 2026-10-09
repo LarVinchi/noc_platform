@@ -13,7 +13,7 @@ from app.core.db import get_db
 from sqlalchemy import text
 from app.core.config import settings
 from app.core.security import AccessMiddleware, auth_configuration, actor_context
-from app.api.routers import audit, monitoring
+from app.api.routers import audit, monitoring, operations
 
 # CRM & Allocation Models
 from app.models.crm import Customer, Service
@@ -70,6 +70,7 @@ app.include_router(network_maps.router, prefix="/api")
 app.include_router(services.router, prefix="/api")
 app.include_router(audit.router, prefix="/api")
 app.include_router(monitoring.router, prefix="/api")
+app.include_router(operations.router, prefix="/api")
 
 @app.get("/")
 def root():

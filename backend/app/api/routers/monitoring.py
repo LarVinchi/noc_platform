@@ -15,6 +15,7 @@ from app.models.incidents import Incident, Ticket
 from app.services.ticketing import generate_tt_number
 from app.services.impact import impact_for_route
 from app.services.operational_activity import record_event
+from app.services.incident_response import initialize_response
 
 router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
 
@@ -107,6 +108,7 @@ def ingest(data, db):
                     description="Monitoring alarm; fault cause and customer outage require NOC verification.",
                     opened_by="PRTG integration", route_id=mapping.route_id, cable_id=mapping.cable_id)
                 db.add(incident); db.flush()
+                initialize_response(db, incident)
                 mapping.incident_id = incident.incident_id
                 service_ids = [mapping.service_id] if mapping.service_id else [row['service_id'] for row in
                     impact_for_route(db, route_id=mapping.route_id, cable_id=mapping.cable_id)['services']]

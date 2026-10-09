@@ -1,7 +1,7 @@
 from datetime import datetime
-from typing import Optional
+from typing import Optional, Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, field_validator
 
 
 class IncidentCreate(BaseModel):
@@ -28,6 +28,7 @@ class IncidentCreate(BaseModel):
     resolution_team: Optional[str] = None
     responsible_person: Optional[str] = None
     opened_by: Optional[str] = None
+    assigned_engineer_id: UUID | None = None
 
     # Optional links into existing infrastructure
     route_id: Optional[UUID] = None
@@ -41,7 +42,7 @@ class IncidentCreate(BaseModel):
 
 class IncidentUpdate(BaseModel):
     """Used to update status/resolution once an incident is being worked or closed."""
-    status: Optional[str] = None
+    status: Literal['open','investigating','pending','resolved','closed','aborted'] | None = None
     resolved_at: Optional[datetime] = None
     resolution_team: Optional[str] = None
     resolution_method: Optional[str] = None
@@ -49,6 +50,13 @@ class IncidentUpdate(BaseModel):
     rfo_root_cause_detail: Optional[str] = None
     closed_by: Optional[str] = None
     notes: Optional[str] = None
+
+    @field_validator('status')
+    @classmethod
+    def nonnull_status(cls, value):
+        if value is None:
+            raise ValueError('Status cannot be null')
+        return value
 
 
 class IncidentResponse(BaseModel):
@@ -79,3 +87,10 @@ class IncidentResponse(BaseModel):
     responsible_person: Optional[str] = None
     opened_by: Optional[str] = None
     closed_by: Optional[str] = None
+    assigned_engineer_id: UUID | None = None
+    response_policy_id: UUID | None = None
+    acknowledged_at: datetime | None = None
+    acknowledged_by: str | None = None
+    ack_deadline_at: datetime | None = None
+    restore_deadline_at: datetime | None = None
+    escalation_level: int = 0
