@@ -22,6 +22,7 @@ services:
       POSTGRES_USER: noc_preview
       POSTGRES_PASSWORD: ${NOC_DB_PASSWORD}
       POSTGRES_SERVER: db
+      DOCUMENT_STORAGE_ROOT: /app/private_documents
       ENVIRONMENT: development
       AUTH_MODE: preview
       MONITORING_INGEST_TOKEN: ${MONITORING_INGEST_TOKEN:-}
@@ -42,6 +43,7 @@ services:
       - ./backend/app:/app/app
       - ./backend/tests:/app/tests:ro
       - preview_documents:/app/static
+      - preview_private_documents:/app/private_documents
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -92,3 +94,4 @@ services:
 volumes:
   preview_db:
   preview_documents:
+  preview_private_documents:

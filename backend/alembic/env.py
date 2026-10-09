@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
 from app.core.config import settings
 from app.models.activity import ActivityEntry
+from app.models.documents import Document, DocumentVersion
 from app.models.network_map import NetworkMapImport, MapRouteLink
 from app.models.monitoring import SensorMapping, MonitoringEvent
 from app.models.response import Engineer, ResponsePolicy, ServiceOutage, ResponseEvent, NotificationDraft, WorkerHeartbeat

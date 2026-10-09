@@ -4,4 +4,5 @@ env
 __pycache__
 .pytest_cache
 static
+private_documents
 *.pyc
