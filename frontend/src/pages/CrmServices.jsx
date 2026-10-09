@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
+import ServiceProvisionForm from '../components/ServiceProvisionForm';
 import apiClient from '../api/client';
 import { Activity, ServerOff } from 'lucide-react';
 
 const CrmServices = () => {
+  const [showProvision, setShowProvision] = useState(false);
+  const [revision, setRevision] = useState(0);
   const [customers, setCustomers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -19,7 +22,7 @@ const CrmServices = () => {
         setError("Failed to connect to the backend API.");
         setLoading(false);
       });
-  }, []);
+  }, [revision]);
 
   if (loading) {
     return <div className="text-cyan-400 animate-pulse flex items-center gap-2"><Activity size={20} /> Loading network data...</div>;
@@ -31,9 +34,10 @@ const CrmServices = () => {
 
   return (
     <div className="space-y-6">
+      {showProvision && <ServiceProvisionForm customers={customers} onClose={() => setShowProvision(false)} onProvisioned={() => { setShowProvision(false); setRevision(revision + 1); }} />}
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-semibold text-white">Customer Services</h2>
-        <button className="bg-cyan-500 hover:bg-cyan-400 text-charcoal-900 font-bold py-2 px-4 rounded transition-colors shadow-cyan-glow">
+        <button onClick={() => setShowProvision(true)} className="bg-cyan-500 hover:bg-cyan-400 text-charcoal-900 font-bold py-2 px-4 rounded transition-colors shadow-cyan-glow">
           + Provision Service
         </button>
       </div>
@@ -64,7 +68,7 @@ const CrmServices = () => {
                 <td className="p-4 text-sm">{cust.address}</td>
                 <td className="p-4">
                   <span className="flex items-center gap-2 text-sm text-lime-400">
-                    <span className="w-2 h-2 rounded-full bg-lime-500 shadow-lime-glow"></span> Active
+                    <span className="w-2 h-2 rounded-full bg-lime-500 shadow-lime-glow"></span> CRM record
                   </span>
                 </td>
               </tr>

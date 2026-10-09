@@ -2,6 +2,7 @@ import { createElement, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, AlertTriangle, ArrowUpRight, Clock, RefreshCw, UserRound } from 'lucide-react';
 import { incidentsApi } from '../api/client';
+import ShiftActivityLog from '../components/ShiftActivityLog';
 
 const activeStatuses = new Set(['open', 'investigating', 'pending']);
 const severityRank = { Critical: 0, High: 1, Medium: 2, Low: 3 };
@@ -69,6 +70,7 @@ export default function OperationsDashboard() {
 
   return (
     <div className="space-y-6 max-w-screen-2xl mx-auto">
+      <ShiftActivityLog />
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="text-xs uppercase tracking-widest text-cyan-400 mb-2">Network operations centre</p>

@@ -11,6 +11,9 @@ const apiClient = axios.create({
 
 // Create a dedicated API service for provisioning
 export const provisioningApi = {
+  assignmentOptions: () => apiClient.get('/inventory/assignment-options'),
+  createNap: (data) => apiClient.post('/inventory/naps', data),
+  allocateOrder: (id, data) => apiClient.patch(`/provisioning/${id}/allocate`, data),
   previewRequest: (data) => apiClient.post('/provisioning/intake/preview', data),
   importRequest: (data) => apiClient.post('/provisioning/intake', data),
   // Fetch all orders
@@ -43,6 +46,12 @@ export const incidentsApi = {
 
   // Update status/resolution fields on an existing incident
   updateIncident: (incidentId, data) => apiClient.patch(`/incidents/${incidentId}`, data),
+};
+
+export const activitiesApi = {
+  list: (options = {}) => apiClient.get('/activities/', options),
+  create: (data) => apiClient.post('/activities/', data),
+  update: (id, data) => apiClient.patch(`/activities/${id}`, data),
 };
 
 export default apiClient;

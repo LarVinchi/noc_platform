@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NocAppShell from './components/NocAppShell';
 import CrmServices from './pages/CrmServices';
-import TopologyMap from './pages/TopologyMap';
+import NetworkTopology from './pages/NetworkTopology';
 import FTTHProvisioning from './pages/FTTHProvisioning';
 import IncidentManagement from './pages/IncidentManagement';
 import OperationsDashboard from './pages/OperationsDashboard';
@@ -25,7 +25,7 @@ function App() {
         <Routes>
           <Route path="/" element={<OperationsDashboard />} />
           <Route path="/crm" element={<CrmServices />} />
-          <Route path="/topology" element={<TopologyMap />} />
+          <Route path="/topology" element={<NetworkTopology />} />
           <Route path="/provisioning" element={<FTTHProvisioning />} />
           <Route path="/incidents" element={<IncidentManagement />} />
         </Routes>
