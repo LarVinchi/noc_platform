@@ -10,6 +10,7 @@ from app.core.config import settings
 from app.models.activity import ActivityEntry
 from app.models.documents import Document, DocumentVersion
 from app.models.ftth_operations import FtthStageEvent,FtthIncidentLink
+from app.models.mail import MailTriageItem
 from app.models.network_map import NetworkMapImport, MapRouteLink
 from app.models.monitoring import SensorMapping, MonitoringEvent
 from app.models.response import Engineer, ResponsePolicy, ServiceOutage, ResponseEvent, NotificationDraft, WorkerHeartbeat

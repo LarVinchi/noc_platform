@@ -16,6 +16,7 @@ from app.core.security import AccessMiddleware, auth_configuration, actor_contex
 from app.api.routers import audit, monitoring, operations
 from app.api.routers import documents
 from app.api.routers import ftth_operations
+from app.api.routers import mail
 
 # CRM & Allocation Models
 from app.models.crm import Customer, Service
@@ -75,6 +76,7 @@ app.include_router(monitoring.router, prefix="/api")
 app.include_router(operations.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(ftth_operations.router, prefix="/api")
+app.include_router(mail.router, prefix="/api")
 
 @app.get("/")
 def root():
