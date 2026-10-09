@@ -4,18 +4,20 @@ from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from typing import List, Optional
 from uuid import UUID 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
 
 from app.core.db import get_db
 from app.models.provisioning import ServiceOrder, WorkflowStage, InstallMetrics
 from app.schemas.provisioning import ServiceOrderCreate, ServiceOrderResponse, ServiceOrderAllocate
+from app.schemas.provisioning import IntakePreviewRequest, IntakePreviewResponse, IntakeCreateRequest, IntakeCreateResponse
+from app.services.ftth_intake import parse_ftth_request
+from app.services.service_orders import create_order
 
 # Import infrastructure to validate allocations
 from app.models.infrastructure import NAP, DropCable
 from app.models.allocations import DropAllocation
 
 from datetime import datetime
-from app.services.pdf_generator import generate_acceptance_pdf
 
 router = APIRouter(prefix="/provisioning", tags=["Provisioning Workflow"])
 
@@ -33,23 +35,6 @@ def save_upload_file(upload_file: UploadFile, order_id: UUID, prefix: str) -> Op
     return f"/{file_path}"
 
 
-def generate_ids(customer_name: str, bandwidth: str, db: Session) -> tuple:
-    """Auto-generates Service ID based on your NOC's naming convention"""
-    names = customer_name.strip().split()
-    first_name = names[0][:4].upper()
-    prefix = f"{first_name}C01"
-    
-    count = db.query(ServiceOrder).filter(
-        ServiceOrder.service_order_number.like(f"{prefix}-%")
-    ).count() + 1
-    
-    seq_str = f"{count:05d}"
-    so_number = f"{prefix}-{seq_str}"
-    clean_bandwidth = bandwidth if bandwidth and bandwidth != "string" else "UNKNOWN"
-    service_id = f"{prefix}-FTTH-{clean_bandwidth}-{seq_str}"
-    
-    return so_number, service_id
-
 @router.get("/", response_model=List[ServiceOrderResponse])
 def get_all_service_orders(db: Session = Depends(get_db)):
     """Fetch all service orders, ordered by newest first."""
@@ -58,19 +43,28 @@ def get_all_service_orders(db: Session = Depends(get_db)):
 
 @router.post("/", response_model=ServiceOrderResponse)
 def create_service_order(order_in: ServiceOrderCreate, db: Session = Depends(get_db)):
-    so_number, service_id = generate_ids(order_in.customer_name, order_in.bandwidth, db)
-    
-    new_order = ServiceOrder(
-        **order_in.model_dump(),
-        service_order_number=so_number,
-        service_id=service_id,
-        status=WorkflowStage.REQUESTED
-    )
-    
-    db.add(new_order)
-    db.commit()
-    db.refresh(new_order)
-    return new_order
+    order, _created = create_order(order_in, db)
+    return order
+
+
+@router.post("/intake/preview", response_model=IntakePreviewResponse)
+def preview_request(payload: IntakePreviewRequest):
+    try:
+        fields, warnings = parse_ftth_request(payload.raw_text)
+        order = ServiceOrderCreate(**fields, isp=payload.isp)
+    except (ValueError, ValidationError) as error:
+        raise HTTPException(status_code=422, detail=str(error))
+    return {"order": order, "warnings": warnings}
+
+
+@router.post("/intake", response_model=IntakeCreateResponse)
+def import_request(payload: IntakeCreateRequest, db: Session = Depends(get_db)):
+    # A pasted request must retain usable external references even after edits.
+    if not payload.order.fn_number or not payload.order.work_order_id:
+        raise HTTPException(status_code=422, detail="FN number and work order ID are required for pasted requests.")
+    order, created = create_order(payload.order, db, raw_text=payload.raw_text)
+    return {"outcome": "created" if created else "already_logged", "order": order}
+
 
 @router.patch("/{order_id}/allocate", response_model=ServiceOrderResponse)
 def allocate_service_order(
@@ -163,6 +157,7 @@ async def complete_installation(
         # Example signature path: "/static/uploads/signatures/noc_admin_sig.png"
         current_noc_signature = None 
         
+        from app.services.pdf_generator import generate_acceptance_pdf
         pdf_url = generate_acceptance_pdf(order, noc_signature_url=current_noc_signature)
         order.metrics.acceptance_doc_url = pdf_url
         db.commit() 

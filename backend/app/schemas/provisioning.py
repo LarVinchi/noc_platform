@@ -1,8 +1,9 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
 from app.models.provisioning import ServiceCategory, WorkflowStage, ISPType
+import re
 
 # --- NEW: Schema for Installation Metrics ---
 class InstallMetricsResponse(BaseModel):
@@ -21,20 +22,82 @@ class InstallMetricsResponse(BaseModel):
 class ServiceOrderCreate(BaseModel):
     # Data the manager fills out to create the order
     service_category: ServiceCategory = ServiceCategory.FTTH
-    customer_name: str
-    service_address: str
+    customer_name: str = Field(min_length=1, max_length=300)
+    service_address: str = Field(min_length=1, max_length=2000)
     phone_number: Optional[str] = None
     email: Optional[EmailStr] = None
     isp: ISPType
-    bandwidth: str
-    fn_number: Optional[str] = None
+    bandwidth: str = Field(min_length=1, max_length=50)
+    fn_number: Optional[str] = Field(default=None, max_length=100)
+    work_order_id: Optional[str] = Field(default=None, max_length=100)
+    source_status: Optional[str] = Field(default=None, max_length=50)
+
+    @field_validator("customer_name", "service_address", "bandwidth", mode="before")
+    @classmethod
+    def trim_required(cls, value):
+        return value.strip() if isinstance(value, str) else value
+
+    @field_validator("fn_number", "work_order_id", mode="before")
+    @classmethod
+    def normalize_reference(cls, value):
+        return value.strip().upper() or None if isinstance(value, str) else value
+
+    @field_validator("email", "phone_number", "source_status", mode="before")
+    @classmethod
+    def normalize_optional(cls, value):
+        return value.strip() or None if isinstance(value, str) else value
+
+    @field_validator("fn_number")
+    @classmethod
+    def validate_fn(cls, value):
+        if value and not re.fullmatch(r"FN\d+", value):
+            raise ValueError("FN number must contain FN followed by digits")
+        return value
+
+    @field_validator("bandwidth")
+    @classmethod
+    def validate_bandwidth(cls, value):
+        match = re.fullmatch(r"(\d+(?:\.\d+)?)\s*(Mbps|Gbps)", value, re.I)
+        if not match or float(match[1]) <= 0:
+            raise ValueError("Use a positive service package such as 100Mbps")
+        return match[1] + ("Mbps" if match[2].lower() == "mbps" else "Gbps")
+
+    @field_validator("phone_number")
+    @classmethod
+    def validate_phone(cls, value):
+        if value and (not re.fullmatch(r"\+?[\d ()-]+", value) or not 7 <= len(re.sub(r"\D", "", value)) <= 15):
+            raise ValueError("Use a phone number containing 7–15 digits")
+        return value
+
+class IntakePreviewRequest(BaseModel):
+    raw_text: str = Field(min_length=1, max_length=20000)
+    isp: ISPType = ISPType.MTNN
+
+class IntakePreviewResponse(BaseModel):
+    order: ServiceOrderCreate
+    warnings: list[str]
+
+class IntakeCreateRequest(BaseModel):
+    raw_text: str = Field(min_length=1, max_length=20000)
+    order: ServiceOrderCreate
 
 class ServiceOrderAllocate(BaseModel):
     nap_id: UUID
     drop_cable_id: UUID
     port_number: int
 
-class ServiceOrderResponse(ServiceOrderCreate):
+class ServiceOrderResponse(BaseModel):
+    # Read models preserve legacy values; stricter intake validation is for writes.
+    service_category: ServiceCategory
+    customer_name: str
+    service_address: str
+    phone_number: Optional[str] = None
+    email: Optional[str] = None
+    isp: ISPType
+    bandwidth: str
+    fn_number: Optional[str] = None
+    work_order_id: Optional[str] = None
+    source_status: Optional[str] = None
     # Data we send back to the frontend
     order_id: UUID
     service_order_number: Optional[str]
@@ -49,6 +112,11 @@ class ServiceOrderResponse(ServiceOrderCreate):
     
     # --- NEW: Added Metrics Field ---
     metrics: Optional[InstallMetricsResponse] = None
+    intake_source: Optional[str] = None
     
     class Config:
         from_attributes = True
+
+class IntakeCreateResponse(BaseModel):
+    outcome: str
+    order: ServiceOrderResponse

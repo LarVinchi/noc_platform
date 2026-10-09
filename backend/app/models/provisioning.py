@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Integer, DateTime, Enum, text, ForeignKey, Float, Boolean
+from sqlalchemy import Column, String, Integer, DateTime, Enum, text, ForeignKey, Float, Boolean, Index
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from datetime import datetime
@@ -27,6 +27,12 @@ class ISPType(str, enum.Enum):
 
 class ServiceOrder(Base):
     __tablename__ = "service_orders"
+    __table_args__ = (
+        Index("uq_service_orders_isp_fn", "isp", "fn_number", unique=True,
+              postgresql_where=text("fn_number IS NOT NULL AND fn_number <> ''")),
+        Index("uq_service_orders_isp_work_order", "isp", "work_order_id", unique=True,
+              postgresql_where=text("work_order_id IS NOT NULL AND work_order_id <> ''")),
+    )
 
     # 1. Primary Identification
     order_id = Column(UUID(as_uuid=True), primary_key=True, server_default=text("gen_random_uuid()"))
@@ -41,6 +47,10 @@ class ServiceOrder(Base):
     email = Column(String, nullable=True)
     bandwidth = Column(String)
     fn_number = Column(String, nullable=True)
+    work_order_id = Column(String, nullable=True)
+    source_status = Column(String, nullable=True)
+    intake_source = Column(String, nullable=True)
+    raw_request_text = Column(String, nullable=True)
     
     service_order_number = Column(String, unique=True, nullable=True) # e.g., SHANC01-00001
     service_id = Column(String, unique=True, nullable=True) # e.g., SHANC01-FTTH-50M-00001
@@ -70,6 +80,12 @@ class ServiceOrder(Base):
 
     # Relationship to the new FTTH Document Metrics
     metrics = relationship("InstallMetrics", back_populates="service_order", uselist=False, cascade="all, delete-orphan")
+
+
+class ServiceOrderSequence(Base):
+    __tablename__ = "service_order_sequences"
+    prefix = Column(String, primary_key=True)
+    last_sequence = Column(Integer, nullable=False)
 
 
 class InstallMetrics(Base):

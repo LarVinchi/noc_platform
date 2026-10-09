@@ -11,6 +11,8 @@ const apiClient = axios.create({
 
 // Create a dedicated API service for provisioning
 export const provisioningApi = {
+  previewRequest: (data) => apiClient.post('/provisioning/intake/preview', data),
+  importRequest: (data) => apiClient.post('/provisioning/intake', data),
   // Fetch all orders
   getOrders: () => apiClient.get('/provisioning/'),
   

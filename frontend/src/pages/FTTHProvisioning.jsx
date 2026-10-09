@@ -4,11 +4,15 @@ import {
   UploadCloud, CheckCircle, X, Download, UserPlus, ShieldCheck, GripVertical
 } from 'lucide-react';
 import { provisioningApi } from '../api/client';
+import FTTHImportModal from '../components/FTTHImportModal';
 
 const FTTHProvisioning = () => {
   const [viewType, setViewType] = useState('list');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   // Modals State
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
@@ -26,8 +30,10 @@ const FTTHProvisioning = () => {
       setLoading(true);
       const response = await provisioningApi.getOrders();
       setOrders(response.data);
+      setLoadError('');
     } catch (error) {
       console.error("Failed to fetch orders:", error);
+      setLoadError('Could not load FTTH orders. Check the API connection and refresh.');
     } finally {
       setLoading(false);
     }
@@ -142,12 +148,20 @@ const FTTHProvisioning = () => {
               <Layout size={16} className="mr-2" /> Board
             </button>
           </div>
+          <button onClick={() => setIsImportOpen(true)} className="rounded-lg border border-cyan-600 px-4 py-2.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-900/30">Paste request</button>
           <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-cyan-900/50">
             <Plus size={16} className="mr-2" /> New FTTH Request
           </button>
         </div>
       </div>
 
+      {notice && <p role="status" className="mb-4 rounded-lg border border-cyan-800 bg-cyan-950/30 p-3 text-sm text-cyan-200">{notice}</p>}
+      {loadError && <p role="alert" className="mb-4 text-sm text-red-300">{loadError} <button onClick={fetchOrders} className="underline">Retry</button></p>}
+      {isImportOpen && <FTTHImportModal onClose={() => setIsImportOpen(false)} onImported={({ outcome, order }) => {
+        setIsImportOpen(false);
+        setNotice(`${outcome === 'created' ? 'Request logged' : 'Already logged — no duplicate created'}: ${order.fn_number} · ${order.work_order_id} · ${order.customer_name}`);
+        fetchOrders();
+      }} />}
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
@@ -168,7 +182,7 @@ const FTTHProvisioning = () => {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.order_id} className="border-b border-charcoal-800 hover:bg-charcoal-800/30 transition-colors">
-                    <td className="px-6 py-4 font-mono font-medium text-cyan-400">{order.service_id || 'Pending Gen'}</td>
+                    <td className="px-6 py-4 font-mono font-medium text-cyan-400">{order.service_id || 'Pending Gen'}<div className="mt-1 text-xs text-slate-400">{[order.fn_number, order.work_order_id].filter(Boolean).join(' · ')}</div></td>
                     <td className="px-6 py-4 text-white font-medium">{order.customer_name}<div className="text-xs text-gray-500 font-normal mt-0.5">{order.bandwidth}</div></td>
                     <td className="px-6 py-4">{order.isp}</td>
                     <td className="px-6 py-4 font-mono text-xs">{order.nap_id ? `NAP Assigned` : <span className="text-red-400 flex items-center"><AlertTriangle size={12} className="mr-1"/> Needs Design</span>}</td>
@@ -180,7 +194,7 @@ const FTTHProvisioning = () => {
                         </button>
                       )}
                       {(order.status === 'PENDING_ACCEPTANCE' || order.status === 'MONITORED') && order.metrics?.acceptance_doc_url && (
-                        <a href={`http://localhost:8000${order.metrics.acceptance_doc_url}`} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-xs font-semibold flex items-center bg-purple-900/30 px-3 py-1.5 rounded">
+                        <a href={order.metrics.acceptance_doc_url} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-xs font-semibold flex items-center bg-purple-900/30 px-3 py-1.5 rounded">
                           <Download size={14} className="mr-1" /> View PDF
                         </a>
                       )}
@@ -220,11 +234,12 @@ const FTTHProvisioning = () => {
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-mono text-xs text-cyan-400 flex items-center">
                           <GripVertical size={12} className="mr-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          {order.service_id}
+                          {order.fn_number || order.service_id}
                         </span>
                         <span className="text-[10px] uppercase font-bold text-gray-500 bg-charcoal-900 px-2 py-0.5 rounded">{order.isp}</span>
                       </div>
                       <h4 className="text-white font-semibold text-sm">{order.customer_name}</h4>
+                      {order.work_order_id && <p className="text-xs text-slate-500 mt-1">Work order {order.work_order_id}</p>}
                       <p className="text-gray-400 text-xs mt-1 truncate">{order.service_address}</p>
                       
                       <div className="mt-4 flex flex-wrap gap-2">
@@ -234,7 +249,7 @@ const FTTHProvisioning = () => {
                           </button>
                         )}
                         {(order.status === 'PENDING_ACCEPTANCE' || order.status === 'MONITORED') && order.metrics?.acceptance_doc_url && (
-                          <a href={`http://localhost:8000${order.metrics.acceptance_doc_url}`} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-[11px] font-semibold flex items-center bg-purple-900/30 px-2 py-1 rounded flex-1 justify-center">
+                          <a href={order.metrics.acceptance_doc_url} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-[11px] font-semibold flex items-center bg-purple-900/30 px-2 py-1 rounded flex-1 justify-center">
                             <Download size={12} className="mr-1" /> PDF
                           </a>
                         )}
