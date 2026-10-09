@@ -5,7 +5,7 @@ from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session, selectinload
 from uuid import UUID
 from app.services.topology import build_cable_topology
-from app.api.routers import provisioning, incidents
+from app.api.routers import provisioning, incidents, inventory, activities, network_maps, services
 
 # Import our custom routes
 from app.api.customers import router as customers_router
@@ -49,6 +49,10 @@ app.add_middleware(
 app.include_router(customers_router, prefix="/api/customers", tags=["Customers"])
 app.include_router(provisioning.router, prefix="/api") # <-- Your new Provisioning Router!
 app.include_router(incidents.router, prefix="/api")
+app.include_router(inventory.router, prefix="/api")
+app.include_router(activities.router, prefix="/api")
+app.include_router(network_maps.router, prefix="/api")
+app.include_router(services.router, prefix="/api")
 
 @app.get("/")
 def root():

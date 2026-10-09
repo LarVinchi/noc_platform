@@ -7,6 +7,8 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 # Import your Base and your Model
 from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
 from app.core.config import settings
+from app.models.activity import ActivityEntry
+from app.models.network_map import NetworkMapImport, MapRouteLink
 from app.models.provisioning import ServiceOrder
 from app.models.incidents import Incident, Ticket, TicketSequence
 from logging.config import fileConfig

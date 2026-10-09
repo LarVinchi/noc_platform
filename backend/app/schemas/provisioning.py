@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, field_validator, model_validator
 from typing import Optional
 from datetime import datetime
 from uuid import UUID
@@ -83,8 +83,26 @@ class IntakeCreateRequest(BaseModel):
 
 class ServiceOrderAllocate(BaseModel):
     nap_id: UUID
-    drop_cable_id: UUID
-    port_number: int
+    drop_cable_id: Optional[UUID] = None
+    new_drop_cable_code: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    port_number: int = Field(ge=1)
+    installer: str = Field(min_length=1, max_length=200)
+    planned_install_date: datetime
+
+    @model_validator(mode="after")
+    def validate_assignment(self):
+        self.installer = self.installer.strip()
+        if not self.installer:
+            raise ValueError("Installer is required")
+        if bool(self.drop_cable_id) == bool(self.new_drop_cable_code):
+            raise ValueError("Select an existing drop cable or enter a new cable code")
+        if self.planned_install_date.tzinfo is None:
+            raise ValueError("Installation date must include its time zone")
+        if self.new_drop_cable_code:
+            self.new_drop_cable_code = self.new_drop_cable_code.strip().upper()
+            if not re.fullmatch(r"[A-Z0-9_-]+", self.new_drop_cable_code):
+                raise ValueError("Drop cable code may contain letters, digits, underscores and hyphens")
+        return self
 
 class ServiceOrderResponse(BaseModel):
     # Read models preserve legacy values; stricter intake validation is for writes.
@@ -113,6 +131,11 @@ class ServiceOrderResponse(BaseModel):
     # --- NEW: Added Metrics Field ---
     metrics: Optional[InstallMetricsResponse] = None
     intake_source: Optional[str] = None
+    drop_tech_name: Optional[str] = None
+    activated_service_id: Optional[UUID] = None
+    nap_code: Optional[str] = None
+    drop_cable_code: Optional[str] = None
+    planned_install_date: Optional[datetime] = None
     
     class Config:
         from_attributes = True

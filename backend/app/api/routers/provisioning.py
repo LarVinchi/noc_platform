@@ -1,7 +1,7 @@
 import os
 import shutil
 from fastapi import APIRouter, Depends, HTTPException, File, UploadFile, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 from typing import List, Optional
 from uuid import UUID 
 from pydantic import BaseModel, ValidationError
@@ -12,12 +12,15 @@ from app.schemas.provisioning import ServiceOrderCreate, ServiceOrderResponse, S
 from app.schemas.provisioning import IntakePreviewRequest, IntakePreviewResponse, IntakeCreateRequest, IntakeCreateResponse
 from app.services.ftth_intake import parse_ftth_request
 from app.services.service_orders import create_order
+from app.services.activation import activate_ftth
+from app.services.operational_activity import record_event
 
 # Import infrastructure to validate allocations
 from app.models.infrastructure import NAP, DropCable
 from app.models.allocations import DropAllocation
 
-from datetime import datetime
+from datetime import datetime, timezone
+from sqlalchemy.exc import IntegrityError
 
 router = APIRouter(prefix="/provisioning", tags=["Provisioning Workflow"])
 
@@ -38,7 +41,7 @@ def save_upload_file(upload_file: UploadFile, order_id: UUID, prefix: str) -> Op
 @router.get("/", response_model=List[ServiceOrderResponse])
 def get_all_service_orders(db: Session = Depends(get_db)):
     """Fetch all service orders, ordered by newest first."""
-    orders = db.query(ServiceOrder).order_by(ServiceOrder.created_at.desc()).all()
+    orders = db.query(ServiceOrder).options(selectinload(ServiceOrder.nap), selectinload(ServiceOrder.drop_cable), selectinload(ServiceOrder.metrics)).order_by(ServiceOrder.created_at.desc()).all()
     return orders
 
 @router.post("/", response_model=ServiceOrderResponse)
@@ -72,35 +75,48 @@ def allocate_service_order(
     alloc_in: ServiceOrderAllocate, 
     db: Session = Depends(get_db)
 ):
-    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).first()
+    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).with_for_update().first()
     if not order:
-        raise HTTPException(status_code=404, detail="Service Order not found")
-        
+        raise HTTPException(status_code=404, detail="Service order not found")
     if order.status != WorkflowStage.REQUESTED:
-        raise HTTPException(status_code=400, detail=f"Cannot allocate order. Current status is {order.status}")
-
-    nap = db.query(NAP).filter(NAP.nap_id == alloc_in.nap_id).first()
+        raise HTTPException(status_code=409, detail="Only new requests can be assigned")
+    # Lock the shared NAP while checking/reserving its capacity.
+    nap = db.query(NAP).filter(NAP.nap_id == alloc_in.nap_id).with_for_update().first()
     if not nap:
         raise HTTPException(status_code=404, detail="NAP not found")
-        
     if alloc_in.port_number > nap.total_ports:
-        raise HTTPException(status_code=400, detail=f"Port {alloc_in.port_number} exceeds NAP capacity of {nap.total_ports}.")
-
-    existing_alloc = db.query(DropAllocation).join(DropCable).filter(
-        DropCable.nap_id == alloc_in.nap_id,
-        DropAllocation.nap_port_number == alloc_in.port_number
-    ).first()
-    
-    if existing_alloc:
-        raise HTTPException(status_code=400, detail=f"NAP Port {alloc_in.port_number} is already allocated.")
-
-    order.nap_id = alloc_in.nap_id
-    order.drop_cable_id = alloc_in.drop_cable_id
-    order.nap_port = alloc_in.port_number
-    order.status = WorkflowStage.SCHEDULED
-
-    db.commit()
-    db.refresh(order)
+        raise HTTPException(status_code=422, detail="Port exceeds NAP capacity")
+    allocated = db.query(DropAllocation).join(DropCable).filter(
+        DropCable.nap_id == nap.nap_id, DropAllocation.nap_port_number == alloc_in.port_number,
+        DropAllocation.is_active.is_(True)).first()
+    reserved = db.query(ServiceOrder).filter(ServiceOrder.nap_id == nap.nap_id,
+        ServiceOrder.nap_port == alloc_in.port_number, ServiceOrder.status != WorkflowStage.REQUESTED).first()
+    if allocated or reserved:
+        raise HTTPException(status_code=409, detail="This NAP port is already allocated or reserved")
+    if alloc_in.drop_cable_id:
+        drop = db.get(DropCable, alloc_in.drop_cable_id)
+        if not drop or drop.nap_id != nap.nap_id or drop.status != 'active':
+            raise HTTPException(status_code=422, detail="Select an active drop cable belonging to this NAP")
+        if db.query(DropAllocation).filter_by(drop_cable_id=drop.drop_cable_id, is_active=True).first() or db.query(ServiceOrder).filter(
+            ServiceOrder.drop_cable_id == drop.drop_cable_id, ServiceOrder.status != WorkflowStage.REQUESTED).first():
+            raise HTTPException(status_code=409, detail="This drop cable is already in use")
+    else:
+        drop = DropCable(nap_id=nap.nap_id, drop_cable_code=alloc_in.new_drop_cable_code, status='active')
+        db.add(drop)
+    try:
+        db.flush()
+        order.nap_id, order.drop_cable_id, order.nap_port = nap.nap_id, drop.drop_cable_id, alloc_in.port_number
+        order.pfs_id, order.pfp_id = nap.pfs_id, nap.pfs.pfp_id
+        order.drop_tech_name = alloc_in.installer
+        order.planned_install_date = alloc_in.planned_install_date.astimezone(timezone.utc).replace(tzinfo=None)
+        order.status = WorkflowStage.SCHEDULED
+        record_event(db, f"FTTH scheduled: {order.fn_number or order.service_order_number}",
+                     f"{order.drop_tech_name}; {nap.nap_code} port {order.nap_port}; drop {drop.drop_cable_code}", order.order_id)
+        db.commit()
+        db.refresh(order)
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(status_code=409, detail="Port/drop reservation conflicts with another order or an existing cable code")
     return order
 
 
@@ -121,6 +137,10 @@ async def complete_installation(
     if not order:
         raise HTTPException(status_code=404, detail="Service Order not found")
 
+    if order.status not in (WorkflowStage.SCHEDULED, WorkflowStage.IN_PROGRESS):
+        raise HTTPException(status_code=409, detail="Assign and schedule this order before recording installation")
+    if not checklist_completed or not all((photo_nap, photo_routing, photo_rosette, photo_flexscan)):
+        raise HTTPException(status_code=422, detail="Complete the checklist and supply all four installation photos")
     # 2. Check existing metrics to avoid duplicates
     if order.metrics:
         raise HTTPException(status_code=400, detail="Installation metrics already exist for this order.")
@@ -148,6 +168,8 @@ async def complete_installation(
     order.completion_date = datetime.utcnow()
     order.status = WorkflowStage.PENDING_ACCEPTANCE
 
+    record_event(db, f"Installation awaiting review: {order.fn_number or order.service_order_number}",
+                 "Installation evidence recorded; NOC review required.", order.order_id)
     db.commit() # Commit to generate the metrics object so the PDF generator can read it
     db.refresh(order)
     
@@ -170,14 +192,19 @@ async def complete_installation(
 @router.patch("/{order_id}/accept", response_model=ServiceOrderResponse)
 def accept_installation(order_id: UUID, db: Session = Depends(get_db)):
     """NOC approves the installation and moves it to active monitoring."""
-    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).first()
+    order = db.query(ServiceOrder).filter(ServiceOrder.order_id == order_id).with_for_update().first()
     if not order:
         raise HTTPException(status_code=404, detail="Service Order not found")
         
     if order.status != WorkflowStage.PENDING_ACCEPTANCE:
         raise HTTPException(status_code=400, detail=f"Cannot accept order in {order.status} stage.")
 
+    if not order.metrics or not order.metrics.checklist_completed or not order.nap_id or not order.drop_cable_id:
+        raise HTTPException(status_code=409, detail="Installation evidence and infrastructure assignment are required for acceptance")
+    activate_ftth(order, db)
     order.status = WorkflowStage.MONITORED
+    record_event(db, f"FTTH accepted: {order.fn_number or order.service_order_number}",
+                 "CRM service and drop allocation created. Monitoring verification is pending.", order.order_id, completed=True)
     db.commit()
     db.refresh(order)
     
@@ -193,7 +220,15 @@ def update_order_status(order_id: UUID, status_update: StatusUpdate, db: Session
     if not order:
         raise HTTPException(status_code=404, detail="Service Order not found")
         
+    allowed = {
+        WorkflowStage.SCHEDULED: {WorkflowStage.IN_PROGRESS},
+        WorkflowStage.IN_PROGRESS: {WorkflowStage.SCHEDULED},
+    }
+    if status_update.status not in allowed.get(order.status, set()):
+        raise HTTPException(status_code=409, detail="Use assignment, installation evidence and NOC approval to advance this order")
     order.status = status_update.status
+    record_event(db, f"FTTH stage: {order.fn_number or order.service_order_number}",
+                 f"Moved to {order.status.value}", order.order_id)
     db.commit()
     db.refresh(order)
     return order
