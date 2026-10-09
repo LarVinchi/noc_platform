@@ -44,10 +44,10 @@ an alternate route/cable is recorded redundancy, not proof that the path is live
 | Monitoring | Explicit sensor mapping, durable intake, deduplication, older-event handling, incident/service ticket creation and alarm clearance implemented; live PRTG bridge, cross-sensor correlation, flapping/maintenance and verified recovery pending |
 | Customer notifications | Reviewable affected-service drafts implemented; approved production wording, delivery transport, durable attempts/retries and delivery acceptance remain |
 | MTTR / SLA | Confirmed intervals, acknowledgment/restoration times, immutable target versions, overlap/exclusion rules and deadline reporting implemented; agreed contracts, eligible hours, coverage verification and contractual availability reporting remain |
-| Stage duration reporting | Structured transition history, stage dwell time, installation/escalation metrics and historical reconciliation |
+| FTTH reporting and fault history | Structured transition/acceptance history, provider-filtered completed/accepted totals, stage durations, order-to-incident links, installation blockers and post-activation faults; see the detailed design below |
 | Historical incident migration | Importer exists; reconcile the actual workbook, including the 514 records described in v2. Do not assume import completion |
-| OneDrive / knowledge base | Locate separate RAG proof of concept, implement validated ingestion, versioning, provenance, access-filtered retrieval and quality evaluation |
-| Generated documents | Reviewed RCAs, shift reports/work orders and daily/weekly reports. Current handover text is a factual summary, not a RAG integration |
+| OneDrive / knowledge base | Colleague owns RAG/audit tools and will supply them later; private document catalogue, completeness checks, versioning, provenance, access-filtered retrieval and evaluated ingestion remain |
+| Generated documents | Approved MTN customer handover template pending; existing pre-acceptance PDF is not final customer handover. Versioned generation/review/delivery plus RCA, shift handover/work order and periodic reports remain |
 | Outlook / Graph | Shared mailbox permissions and human-reviewed drafting; no messages sent automatically |
 | Activity evidence | General activity image attachments and richer RCA/resolution editing from the HTML reference are not yet incorporated; FTTH installation photos already exist |
 | Inventory administration | Broader route/cable/core/splitter editing, exact customer/site coordinates, lifecycle management, cancellation and capacity release workflows |
@@ -65,3 +65,13 @@ customer impact paths, persistent map links, shared activities, enterprise servi
 types and alternate paths. Database writes are transactionally rolled back.
 Installation tests also exercise the existing photo/PDF path in preview storage.
 Microsoft 365, PRTG and real production-data migrations have not been validated.
+
+## Document and FTTH follow-up investigation
+
+Both complete source documents were reread on 2026-10-09. The original central
+document/RAG requirement remains outstanding. The [document storage and FTTH
+design](document-storage-and-ftth-design.md) records source requirements, code
+findings, proposed schema/storage/permissions, PDF/Excel extraction rules,
+the colleague's integration boundary, handover lifecycle, installation metrics,
+FTTH fault links and the revised implementation order. This is a design, not
+implemented storage or a working RAG integration.

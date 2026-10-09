@@ -157,3 +157,8 @@ MTTR and communication review. All services start through the same `dev.ps1`
 command. See [the incident response guide](docs/incident-response.md) for setup,
 reporting rules and the remaining production requirements. Notification drafts
 are not delivered, and preview targets are not contractual SLAs.
+
+Document storage/RAG and the remaining FTTH handover, reporting and fault-history
+requirements are investigated in [the document and FTTH design](docs/document-storage-and-ftth-design.md).
+The colleague's RAG/audit tools and approved MTN handover template are pending;
+the design separates work that can proceed now from those dependencies.
