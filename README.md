@@ -27,6 +27,13 @@ Do not treat this development application as production ready.
 See [the requirements review](docs/requirements-review.md) for the document-to-feature
 checklist and remaining release gates.
 
+Container builds now have separate **development** and **production** targets.
+Production packages a non-root API and a static Nginx frontend; the preview keeps
+hot reload and shares one backend image across API, migration and worker.
+See [the cleanup audit and build/deployment guide](docs/container-builds.md).
+`compose.production.example.yaml` is a deployment reference with outstanding
+security/configuration/recovery gates, not an approved production release.
+
 ## Advance orders and inspect customer impact
 
 On the FTTH table or board, use **Assign & schedule** for a new request. Select a

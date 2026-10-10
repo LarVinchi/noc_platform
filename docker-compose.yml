@@ -1,3 +1,4 @@
+# Legacy database-only development setup. Prefer compose.dev.yaml for the platform.
 services:
   db:
     image: postgis/postgis:15-3.3
@@ -5,12 +6,12 @@ services:
     restart: always
     environment:
       POSTGRES_USER: noc_admin
-      POSTGRES_PASSWORD: noc_secure_password_123
+      POSTGRES_PASSWORD: ${NOC_LEGACY_DB_PASSWORD:?Set the existing legacy database password explicitly}
       POSTGRES_DB: noc_platform_db
     ports:
       # Format is HOST_PORT:CONTAINER_PORT
       # We use 5433 locally to avoid conflict with your native Postgres
-      - "5433:5432"
+      - "127.0.0.1:5433:5432"
     volumes:
       - noc_pg_data:/var/lib/postgresql/data
       - ./db/init-scripts:/docker-entrypoint-initdb.d

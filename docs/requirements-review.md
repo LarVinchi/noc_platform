@@ -24,7 +24,7 @@ and ticket prefixes are not application configuration or operational instruction
 | Communication review | Assignment/escalation/outage/restoration drafts with reviewed actor/time and superseded-draft protection; no delivery transport |
 | Document foundation | Private catalogue/uploads, immutable revisions, record links, owner/admin access, explicit NOC sharing, checksum-verified downloads and audit; no approval or RAG indexing |
 | Knowledge interface | Dedicated source workspace, global floating chat/source panel and active incident/FTTH context, authorized revision inspection and real record facts; queries disabled until RAG integration |
-| Delivery baseline | Single-command isolated preview, migrations, CI, unit/database-backed tests and frontend lint/build |
+| Delivery baseline | Single-command isolated preview, shared backend image, separate non-root production targets, static Nginx frontend, dependency constraints, migrations, CI packaging checks, unit/database-backed tests and frontend lint/build |
 
 Geographic customer pins use serving-NAP coordinates or a route endpoint anchor.
 They are not exact premises locations. Imported line geometry must be explicitly

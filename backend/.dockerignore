@@ -6,3 +6,8 @@ __pycache__
 static
 private_documents
 *.pyc
+.git
+.coverage
+htmlcov
+*.log
+README*

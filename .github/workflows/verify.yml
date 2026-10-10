@@ -60,4 +60,18 @@ jobs:
         if: always()
         run: docker compose -f compose.dev.yaml down
 
+  production-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the non-root runtime images
+        run: |
+          docker build --target production -t noc-backend:verify backend
+          docker build --target production -t noc-frontend:verify frontend
+      - name: Verify runtime contents and PDF dependencies
+        run: |
+          docker run --rm --entrypoint python noc-backend:verify -c "import os,importlib.util; from io import BytesIO; from xhtml2pdf import pisa; assert os.getuid()==10001; assert importlib.util.find_spec('pytest') is None; result=BytesIO(); assert not pisa.CreatePDF('<p>NOC runtime check</p>',dest=result).err; assert result.getvalue().startswith(b'%PDF')"
+          docker run --rm --add-host api:127.0.0.1 --entrypoint nginx noc-frontend:verify -t
+
 # These development gates do not constitute production readiness or SSO validation.

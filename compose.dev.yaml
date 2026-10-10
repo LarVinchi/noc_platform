@@ -17,7 +17,10 @@ services:
       retries: 30
 
   migrate:
-    build: ./backend
+    image: noc-preview-backend:dev
+    build:
+      context: ./backend
+      target: development
     environment: &backend_environment
       POSTGRES_USER: noc_preview
       POSTGRES_PASSWORD: ${NOC_DB_PASSWORD}
@@ -34,7 +37,8 @@ services:
         condition: service_healthy
 
   api:
-    build: ./backend
+    image: noc-preview-backend:dev
+    pull_policy: never
     environment: *backend_environment
     command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8000', --reload]
     ports:
@@ -54,7 +58,8 @@ services:
       retries: 30
 
   response-worker:
-    build: ./backend
+    image: noc-preview-backend:dev
+    pull_policy: never
     environment: *backend_environment
     command: [python, -u, -m, app.response_worker]
     restart: unless-stopped
@@ -71,7 +76,10 @@ services:
       start_period: 30s
 
   frontend:
-    build: ./frontend
+    image: noc-preview-frontend:dev
+    build:
+      context: ./frontend
+      target: development
     environment:
       VITE_API_BASE_URL: /api
       API_PROXY_TARGET: http://api:8000
