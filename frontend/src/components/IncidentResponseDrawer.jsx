@@ -2,12 +2,14 @@ import { useCallback, useEffect, useState } from 'react';
 import { X, UserRound, CheckCheck, ShieldCheck, Timer, AlertTriangle } from 'lucide-react';
 import { operationsApi, operationError, watTime, localWatInput, fromWatInput } from '../api/operations';
 import '../styles/response.css';
+import CaseAssistantDrawer from './CaseAssistantDrawer';
 
 export default function IncidentResponseDrawer({ incidentId, identity, onClose, onChange }) {
   const [detail,setDetail] = useState(null),[engineers,setEngineers] = useState([]),[services,setServices] = useState([]);
   const [owner,setOwner] = useState(''),[outage,setOutage] = useState({service_id:'',started_at:localWatInput(),note:'',excluded:false,exclusion_reason:''});
   const [restoreId,setRestoreId] = useState(null),[restore,setRestore] = useState({restored_at:localWatInput(),note:''});
   const [error,setError] = useState(''),[busy,setBusy] = useState(false),[tab,setTab] = useState('Response');
+  const [assistantOpen,setAssistantOpen] = useState(false);
   const canWrite = identity?.roles?.some(role => ['NOC.Admin','NOC.Operator'].includes(role));
   const load = useCallback(async () => {
     try { const [state,people,targets] = await Promise.all([operationsApi.details(incidentId),operationsApi.engineers(),operationsApi.services()]);
@@ -18,10 +20,11 @@ export default function IncidentResponseDrawer({ incidentId, identity, onClose, 
   useEffect(() => { const escape=event => { if(event.key==='Escape') onClose(); }; document.addEventListener('keydown',escape); return () => document.removeEventListener('keydown',escape); },[onClose]);
   async function action(callback) { setBusy(true);setError('');try { await callback();await load();onChange?.(); }catch(error){setError(operationError(error));}finally{setBusy(false);} }
   const incident=detail?.incident, active=incident && ['open','investigating','pending'].includes(incident.status);
-  return <div className="response-modal-backdrop" onClick={event=>{if(event.target===event.currentTarget)onClose();}}><section className="response-drawer" role="dialog" aria-modal="true" aria-label="Incident response workspace">
-    <header><div><span className="eyebrow">INCIDENT RESPONSE / VERIFIED SERVICE EVIDENCE</span><h2>{incident?.tt_number||'Loading incident…'}</h2><p>{incident?.short_description||incident?.incident_type}</p></div><button className="noc-icon-button" onClick={onClose} aria-label="Close incident response"><X size={20}/></button></header>
+  return <div className={`response-modal-backdrop ${assistantOpen?'knowledge-pair':''}`} onClick={event=>{if(event.target===event.currentTarget)onClose();}}><section className="response-drawer" role="dialog" aria-modal={!assistantOpen} aria-label="Incident response workspace">
+    <header><div><span className="eyebrow">INCIDENT RESPONSE / VERIFIED SERVICE EVIDENCE</span><h2>{incident?(incident.tt_number||'Unnumbered incident'):'Loading incident…'}</h2><p>{incident?.short_description||incident?.incident_type}</p></div><button className="noc-icon-button" onClick={onClose} aria-label="Close incident response"><X size={20}/></button></header>
     <div className="response-tabs">{['Response','Service outages','Timeline'].map(name=><button key={name} className={tab===name?'active':''} onClick={()=>setTab(name)}>{name}{name==='Service outages'&&detail&&` (${detail.outages.length})`}</button>)}</div>
     <div className="response-drawer-body">{error&&<p role="alert" className="response-error">{error}</p>}{!detail&&!error&&<p className="response-muted">Loading response history…</p>}
+    {incident&&<button className="response-button knowledge-case-trigger" onClick={()=>setAssistantOpen(value=>!value)}>Ask about this incident</button>}
     {detail&&tab==='Response'&&<><div className="response-facts"><div><small>STATUS</small><strong>{incident.status}</strong></div><div><small>ESCALATION</small><strong>Level {incident.escalation_level}</strong></div><div><small>REPORTED</small><strong>{watTime(incident.reported_at)}</strong></div></div>
       <section className="response-section"><h3><UserRound size={16}/>Engineer ownership</h3><p>Directory assignment is operational ownership; the audit record identifies the operator who performs each action.</p><div className="response-inline"><select aria-label="Assigned engineer" value={owner} onChange={e=>setOwner(e.target.value)} disabled={!canWrite||!active}><option value="">Select enabled engineer</option>{engineers.filter(row=>row.enabled||row.engineer_id===incident.assigned_engineer_id).map(row=><option key={row.engineer_id} value={row.engineer_id}>{row.name} · {row.team}{!row.enabled?' · disabled':''}</option>)}</select>{canWrite&&active&&<button disabled={busy||!owner} className="response-button primary" onClick={()=>action(()=>operationsApi.assign(incidentId,owner))}>Assign engineer</button>}</div>
       {!engineers.some(row=>row.enabled)&&<p className="response-note">An administrator must add an engineer in Response centre → Configuration.</p>}
@@ -42,5 +45,5 @@ export default function IncidentResponseDrawer({ incidentId, identity, onClose, 
       {!detail.outages.length&&<p className="response-empty">No service outage has been confirmed for this incident.</p>}</>}
     {detail&&tab==='Timeline'&&<div className="response-timeline">{detail.timeline.map(event=><article key={event.event_id}><i/><div><h3>{event.event_type.replaceAll('_',' ')}</h3><p>{event.message}</p><small>{watTime(event.occurred_at)} · Actor: {event.actor_id}</small></div></article>)}{!detail.timeline.length&&<p className="response-empty">No response events recorded yet.</p>}</div>}
     </div>
-  </section></div>;
+  </section>{assistantOpen&&incident&&<CaseAssistantDrawer key={incidentId} kind="incident" record={incident} onClose={()=>setAssistantOpen(false)}/>}</div>;
 }

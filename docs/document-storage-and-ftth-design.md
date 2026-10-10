@@ -242,7 +242,10 @@ For example, on an FTTH case: “Which earlier RCA describes this NAP fault?” 
 for this FN” or “Draft a weekly report from the selected reporting window.”
 Exact totals use authorized SQL reporting, not estimated sums from retrieved text.
 
-This interface is a proposal, not a working RAG chat. Implement the integration
+The dedicated Knowledge workspace and incident/FTTH companion drawers now exist
+as an interface foundation; see [the preview guide](knowledge-workspace.md).
+They show authorized source metadata and real case facts, with queries disabled.
+Customer/service drawers remain pending. Implement the integration
 adapter and evidence/citation behavior with the colleague's tools before showing
 an enabled AI conversation. Until then, file management, operational reporting
 and manual triage remain usable independently.

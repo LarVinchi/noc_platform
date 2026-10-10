@@ -175,6 +175,13 @@ See [the FTTH operations guide](docs/ftth-operations.md). Proposed NOC mailbox
 flagging and selective evidence retention are described in [mail triage](docs/noc-mail-triage.md);
 no mailbox is connected.
 
+**Knowledge assistant** now has a dedicated source workspace and case drawers.
+Open **Response centre → Manage response → Ask about this incident**, or
+**FTTH operations → History / incidents → Ask about this FTTH case**.
+The preview shows real case facts and accessible source revisions; RAG answers
+remain disabled until the engine and approval/extraction pipeline are connected.
+See [the Knowledge workspace guide](docs/knowledge-workspace.md).
+
 **Mail triage** now includes a private manual preview queue, rule explanations,
 priority hints and review links to existing incidents/FTTH cases. It does not
 monitor a live inbox. See [the preview guide](docs/mail-preview.md).

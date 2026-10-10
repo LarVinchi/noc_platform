@@ -15,6 +15,7 @@ import ResponseCenter from './pages/ResponseCenter';
 import Documents from './pages/Documents';
 import FtthOperations from './pages/FtthOperations';
 import MailTriage from './pages/MailTriage';
+import Knowledge from './pages/Knowledge';
 
 function App() {
   // Authentication State
@@ -47,6 +48,7 @@ function App() {
           <Route path="/documents" element={<Documents identity={identity} />} />
           <Route path="/ftth-operations" element={<FtthOperations identity={identity} />} />
           <Route path="/mail" element={<MailTriage identity={identity} />} />
+          <Route path="/knowledge" element={<Knowledge />} />
           <Route path="/audit" element={<AuditHistory />} />
           <Route path="/monitoring" element={<Monitoring identity={identity} />} />
         </Routes>

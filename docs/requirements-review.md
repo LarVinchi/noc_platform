@@ -23,6 +23,7 @@ and ticket prefixes are not application configuration or operational instruction
 | Service outage reporting | Confirmed/restored intervals, closure guards, overlapping downtime union, explicit exclusions and restored-episode MTTR; availability coverage remains unverified |
 | Communication review | Assignment/escalation/outage/restoration drafts with reviewed actor/time and superseded-draft protection; no delivery transport |
 | Document foundation | Private catalogue/uploads, immutable revisions, record links, owner/admin access, explicit NOC sharing, checksum-verified downloads and audit; no approval or RAG indexing |
+| Knowledge interface | Dedicated source workspace and incident/FTTH companion drawers, authorized revision inspection and real record facts; queries disabled until RAG integration |
 | Delivery baseline | Single-command isolated preview, migrations, CI, unit/database-backed tests and frontend lint/build |
 
 Geographic customer pins use serving-NAP coordinates or a route endpoint anchor.
@@ -74,5 +75,6 @@ document/RAG requirement remains outstanding. The [document storage and FTTH
 design](document-storage-and-ftth-design.md) records source requirements, code
 findings, proposed schema/storage/permissions, PDF/Excel extraction rules,
 the colleague's integration boundary, handover lifecycle, installation metrics,
-FTTH fault links and the revised implementation order. This is a design, not
-implemented storage or a working RAG integration.
+FTTH fault links and the revised implementation order. Private document storage
+and the [Knowledge interface foundation](knowledge-workspace.md) are implemented;
+approval, extraction, indexing and a working RAG integration remain pending.

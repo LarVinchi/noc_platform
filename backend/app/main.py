@@ -17,6 +17,7 @@ from app.api.routers import audit, monitoring, operations
 from app.api.routers import documents
 from app.api.routers import ftth_operations
 from app.api.routers import mail
+from app.api.routers import knowledge
 
 # CRM & Allocation Models
 from app.models.crm import Customer, Service
@@ -77,6 +78,7 @@ app.include_router(operations.router, prefix="/api")
 app.include_router(documents.router, prefix="/api")
 app.include_router(ftth_operations.router, prefix="/api")
 app.include_router(mail.router, prefix="/api")
+app.include_router(knowledge.router, prefix="/api")
 
 @app.get("/")
 def root():
