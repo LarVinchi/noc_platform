@@ -182,6 +182,13 @@ See [the FTTH operations guide](docs/ftth-operations.md). Proposed NOC mailbox
 flagging and selective evidence retention are described in [mail triage](docs/noc-mail-triage.md);
 no mailbox is connected.
 
+**Record corrections** are available for incidents, customers, provisioned service
+bandwidth and FTTH orders. Category corrections replace the stored Ticket ID and
+preserve previous IDs for search; TN means Transmission. Overview activity logging
+also requires an incident category when creating an incident or customer escalation.
+See [the correction guide](docs/record-corrections.md) for synchronization, history
+and fields requiring dedicated reassignment workflows.
+
 **Knowledge assistant** now has a dedicated source workspace and a bottom-right
 **AI assistant** launcher on every signed-in page, with Chat and Sources tabs.
 Open **Response centre → Manage response → Ask about this incident**, or

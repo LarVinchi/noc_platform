@@ -1,8 +1,8 @@
 from typing import Literal
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Query
 from pydantic import BaseModel, Field, model_validator
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session,selectinload
 from sqlalchemy.exc import IntegrityError
 from app.core.db import get_db
 from app.models.crm import Customer, Service
@@ -11,6 +11,24 @@ from app.models.allocations import CoreAllocation
 from app.services.operational_activity import record_event
 
 router = APIRouter(prefix="/services", tags=["Service provisioning"])
+
+
+@router.get('/')
+def service_catalogue(customer_id:UUID|None=None,offset:int=Query(0,ge=0),limit:int=Query(50,ge=1,le=100),db:Session=Depends(get_db)):
+    from app.models.provisioning import ServiceOrder
+    query=db.query(Service)
+    if customer_id:query=query.filter_by(customer_id=customer_id)
+    total=query.count()
+    records=query.options(selectinload(Service.customer)).order_by(Service.created_at.desc(),Service.service_id).offset(offset).limit(limit).all()
+    linked_orders={record.service_id:[] for record in records}
+    if records:
+        for order in db.query(ServiceOrder).filter(ServiceOrder.activated_service_id.in_(list(linked_orders))).order_by(ServiceOrder.order_id).all():
+            linked_orders[order.activated_service_id].append({'order_id':order.order_id,'fn_number':order.fn_number})
+    return {'total':total,'offset':offset,'limit':limit,'items':[{
+      'service_id':s.service_id,'customer_id':s.customer_id,'customer_name':s.customer.customer_name,
+      'service_type':s.service_type,'bandwidth_mbps':s.bandwidth_mbps,'status':s.status,
+      'ftth_orders':linked_orders[s.service_id]
+    } for s in records]}
 
 
 @router.get("/free-cores")

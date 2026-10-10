@@ -1,13 +1,24 @@
 from datetime import datetime
 from typing import Optional, Literal
 from uuid import UUID
-from pydantic import BaseModel, ConfigDict, field_validator
+from pydantic import BaseModel, ConfigDict, field_validator, computed_field
 
 
 class IncidentCreate(BaseModel):
     # Required at logging time
     incident_type: str
-    ticket_category: str  # FIBER / POWER / TECHNICAL / MAINTENANCE / OTHER -> drives the TT number
+    ticket_category: str  # FIBER / POWER / TRANSMISSION / MAINTENANCE / OTHER -> drives the TT number
+
+    @field_validator('ticket_category')
+    @classmethod
+    def canonical_ticket_category(cls, value):
+        from app.models.incidents import VALID_TICKET_CATEGORIES
+        value = value.strip().upper()
+        if value == 'TECHNICAL':
+            value = 'TRANSMISSION'
+        if value not in VALID_TICKET_CATEGORIES:
+            raise ValueError('Select a valid ticket category')
+        return value
 
     # Everything else mirrors the historical incident log and is optional,
     # since not every incident has every field filled in at creation time.
@@ -61,6 +72,11 @@ class IncidentUpdate(BaseModel):
 
 class IncidentResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
+
+    @computed_field
+    @property
+    def ticket_id(self) -> Optional[str]:
+        return self.tt_number
 
     incident_id: UUID
     tt_number: Optional[str] = None

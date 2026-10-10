@@ -40,9 +40,9 @@ function App() {
       <NocAppShell identity={identity} onLogout={async () => { await signOut(); setIdentity(null); }}>
         <Routes>
           <Route path="/" element={<OperationsDashboard />} />
-          <Route path="/crm" element={<CrmServices />} />
+          <Route path="/crm" element={<CrmServices identity={identity}/>} />
           <Route path="/topology" element={<NetworkTopology />} />
-          <Route path="/provisioning" element={<FTTHProvisioning />} />
+          <Route path="/provisioning" element={<FTTHProvisioning identity={identity}/>} />
           <Route path="/incidents" element={<IncidentManagement identity={identity} />} />
           <Route path="/response" element={<ResponseCenter identity={identity} />} />
           <Route path="/documents" element={<Documents identity={identity} />} />

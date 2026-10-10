@@ -16,6 +16,7 @@ from app.models.ftth_operations import FtthIncidentLink
 from app.models.crm import Service
 from app.models.incidents import Ticket
 from app.core.security import actor_context
+from app.models.corrections import IncidentTicketIdentifier
 
 router = APIRouter(prefix="/incidents", tags=["Incidents"])
 
@@ -37,6 +38,7 @@ def create_incident(incident_in: IncidentCreate, db: Session = Depends(get_db)):
     )
     db.add(incident)
     db.flush()
+    db.add(IncidentTicketIdentifier(ticket_id=tt_number,incident_id=incident.incident_id))
     if incident_in.assigned_engineer_id:
         engineer = db.get(Engineer, incident_in.assigned_engineer_id)
         if not engineer or not engineer.enabled:
@@ -53,7 +55,7 @@ def list_incidents(
     status: Optional[str] = None,
     severity: Optional[str] = None,
     ticket_category: Optional[str] = None,
-    search: Optional[str] = Query(None, description="Matches TT number or short description"),
+    search: Optional[str] = Query(None, description="Matches current/previous Ticket ID or short description"),
     db: Session = Depends(get_db),
 ):
     """List/filter incidents — powers the Incident Management table view."""
@@ -63,11 +65,13 @@ def list_incidents(
     if severity:
         q = q.filter(Incident.severity == severity)
     if ticket_category:
-        q = q.filter(Incident.ticket_category == ticket_category)
+        category = ticket_category.strip().upper()
+        q = q.filter(Incident.ticket_category == ("TRANSMISSION" if category == "TECHNICAL" else category))
     if search:
         like = f"%{search}%"
         q = q.filter(
-            (Incident.tt_number.ilike(like)) | (Incident.short_description.ilike(like))
+            (Incident.tt_number.ilike(like)) | (Incident.short_description.ilike(like)) |
+            Incident.incident_id.in_(db.query(IncidentTicketIdentifier.incident_id).filter(IncidentTicketIdentifier.ticket_id.ilike(like)))
         )
     return q.order_by(Incident.reported_at.desc()).all()
 

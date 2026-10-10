@@ -90,7 +90,7 @@ def link_incident(identifier: UUID,data: LinkInput,db: Session=Depends(get_db)):
         if existing:
             return {'outcome':'already_linked','incident':incident_row(incident,data.kind)}
     else:
-        incident=Incident(tt_number=generate_tt_number(db,'TECHNICAL'),ticket_category='TECHNICAL',incident_type='Service Unavailability' if data.kind=='service_fault' else 'Other',
+        incident=Incident(tt_number=generate_tt_number(db,'TRANSMISSION'),ticket_category='TRANSMISSION',incident_type='Service Unavailability' if data.kind=='service_fault' else 'Other',
             short_description=data.title,description=data.note,severity=data.severity,status='open',reported_at=now_utc().replace(tzinfo=None),
             opened_by=actor_context.get()['id'],nap_id=order.nap_id,drop_cable_id=order.drop_cable_id)
         db.add(incident);db.flush();initialize_response(db,incident)

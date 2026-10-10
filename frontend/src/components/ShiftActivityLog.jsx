@@ -4,10 +4,11 @@ import { activitiesApi } from '../api/client';
 
 const statuses = ['Open', 'In Progress', 'Pending', 'Completed', 'Partially Closed', 'Aborted'];
 const categories = ['Activity / Task', 'Incident', 'Customer Escalation', 'Maintenance', 'Monitoring / Alert', 'Reminder Email'];
+const incidentCategories = [['TRANSMISSION','Transmission','TN'],['FIBER','Fiber','OF'],['POWER','Power','PW'],['MAINTENANCE','Maintenance','MA'],['OTHER','Other','OT']];
 const terminal = new Set(['Completed', 'Aborted']);
 const css = 'w-full rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm';
 const nowShift = () => { const h = Number(new Intl.DateTimeFormat('en-GB', { hour: '2-digit', hourCycle: 'h23', timeZone: 'Africa/Lagos' }).format(new Date())); return h < 6 || h >= 22 ? 'Night' : h < 14 ? 'Morning' : 'Afternoon'; };
-const empty = () => ({ person: '', shift: nowShift(), category: 'Activity / Task', title: '', description: '', status: 'Open', severity: 'Medium', affected_system: '', vendor_reference: '', handover: false, scheduled_at: '', due_at: '' });
+const empty = () => ({ person: '', shift: nowShift(), category: 'Activity / Task', ticket_category: '', title: '', description: '', status: 'Open', severity: 'Medium', affected_system: '', vendor_reference: '', handover: false, scheduled_at: '', due_at: '' });
 
 export default function ShiftActivityLog() {
   const [entries, setEntries] = useState([]);
@@ -26,17 +27,17 @@ export default function ShiftActivityLog() {
   async function submit(event) {
     event.preventDefault(); setBusy(true);
     const aware = (value) => value ? `${value}:00+01:00` : null;
-    try { await activitiesApi.create({ ...form, scheduled_at: aware(form.scheduled_at), due_at: aware(form.due_at) }); setForm({ ...empty(), person: form.person }); await refresh(); }
+    try { await activitiesApi.create({ ...form, ticket_category: ['Incident','Customer Escalation'].includes(form.category) ? form.ticket_category : null, scheduled_at: aware(form.scheduled_at), due_at: aware(form.due_at) }); setForm({ ...empty(), person: form.person }); await refresh(); }
     catch (failure) { setError(typeof failure.response?.data?.detail === 'string' ? failure.response.data.detail : 'Could not save activity. Check the fields and retry.'); }
     finally { setBusy(false); }
   }
   async function update(entry, next) { try { await activitiesApi.update(entry.activity_id, { status: next }); await refresh(); } catch { setError('Could not update activity status. Refresh and retry.'); } }
   const people = [...new Set(entries.map((e) => e.person))].sort();
   const filtered = entries.filter((e) => (!person || e.person === person) && (!shift || e.shift === shift) && (!status || e.status === status) &&
-    `${e.title} ${e.description} ${e.vendor_reference || ''}`.toLowerCase().includes(search.toLowerCase()) &&
+    `${e.title} ${e.description} ${e.ticket_id || ''} ${e.ticket_category || ''} ${e.vendor_reference || ''}`.toLowerCase().includes(search.toLowerCase()) &&
     (tab === 'All activity' || tab === 'Team summary' || (tab === 'Incidents & escalations' ? ['Incident', 'Customer Escalation'].includes(e.category) : tab === 'Maintenance' ? e.category === 'Maintenance' : e.category === 'Reminder Email')));
   const pending = entries.filter((e) => e.handover || !terminal.has(e.status));
-  const summary = `SHIFT HANDOVER · ${new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })} WAT\n` + (pending.length ? pending.map((e) => `[${e.status}] ${e.title} · ${e.person} (${e.shift})${e.affected_system ? ` · ${e.affected_system}` : ''}\n${e.description}`).join('\n\n') : 'No pending or flagged activities recorded.');
+  const summary = `SHIFT HANDOVER · ${new Date().toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })} WAT\n` + (pending.length ? pending.map((e) => `[${e.status}] ${e.title}${e.ticket_id ? ` (${e.ticket_id}, ${e.ticket_category})` : ''} · ${e.person} (${e.shift})${e.affected_system ? ` · ${e.affected_system}` : ''}\n${e.description}`).join('\n\n') : 'No pending or flagged activities recorded.');
   const set = (key, value) => setForm({ ...form, [key]: value });
   return <section className="space-y-4">
     <div className="flex flex-wrap gap-3 items-center justify-between"><div><h2 className="text-xl font-semibold">Daily activity & shift handover</h2><p className="text-xs text-slate-400 mt-1">{nowShift()} shift · Morning 06–14 / Afternoon 14–22 / Night 22–06 · WAT</p></div><button onClick={() => setHandover(!handover)} className="text-sm border border-slate-600 rounded-lg px-3 py-2">Handover summary</button></div>
@@ -48,7 +49,8 @@ export default function ShiftActivityLog() {
         <h3 className="font-semibold">Log activity</h3>
         <label className="block text-xs text-slate-400">Logged by<input required value={form.person} onChange={(e) => set('person', e.target.value)} className={css} /></label>
         <label className="block text-xs text-slate-400">Shift<select value={form.shift} onChange={(e) => set('shift', e.target.value)} className={css}>{['Morning', 'Afternoon', 'Night'].map((s) => <option key={s}>{s}</option>)}</select></label>
-        <label className="block text-xs text-slate-400">Category<select value={form.category} onChange={(e) => set('category', e.target.value)} className={css}>{categories.map((c) => <option key={c}>{c}</option>)}</select></label>
+        <label className="block text-xs text-slate-400">Activity category<select aria-label="Activity category" value={form.category} onChange={(e) => set('category', e.target.value)} className={css}>{categories.map((c) => <option key={c}>{c}</option>)}</select></label>
+        {['Incident','Customer Escalation'].includes(form.category) && <label className="block text-xs text-slate-400">Incident category<select aria-label="Incident category" required value={form.ticket_category} onChange={e=>set('ticket_category',e.target.value)} className={css}><option value="">Choose incident category...</option>{incidentCategories.map(([value,label,code])=><option key={value} value={value}>{label} ({code})</option>)}</select></label>}
         <label className="block text-xs text-slate-400">Title<input required value={form.title} onChange={(e) => set('title', e.target.value)} className={css} /></label>
         <label className="block text-xs text-slate-400">Details<textarea rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} className={css} /></label>
         <label className="block text-xs text-slate-400">Affected system / service<input value={form.affected_system} onChange={(e) => set('affected_system', e.target.value)} className={css} /></label>
@@ -58,7 +60,7 @@ export default function ShiftActivityLog() {
         {form.category === 'Reminder Email' && <label className="block text-xs text-slate-400">Due at · WAT<input type="datetime-local" value={form.due_at} onChange={(e) => set('due_at', e.target.value)} className={css} /></label>}
         <label className="block text-xs text-slate-400">Status<select value={form.status} onChange={(e) => set('status', e.target.value)} className={css}>{statuses.map((s) => <option key={s}>{s}</option>)}</select></label>
         <label className="flex gap-2 text-sm"><input type="checkbox" checked={form.handover} onChange={(e) => set('handover', e.target.checked)} />Flag for next shift</label>
-        {['Incident', 'Customer Escalation'].includes(form.category) && <p className="text-xs text-slate-400">Creates a linked incident with the existing trouble-ticket convention.</p>}
+        {['Incident', 'Customer Escalation'].includes(form.category) && <p className="text-xs text-slate-400">Creates a linked incident. The incident category sets the Ticket ID prefix.</p>}
         <button disabled={busy} className="bg-cyan-700 rounded-lg w-full p-2.5 text-sm disabled:opacity-50">{busy ? 'Saving…' : 'Add to log'}</button>
       </form>
       <div className="min-w-0 space-y-3">
@@ -69,7 +71,7 @@ export default function ShiftActivityLog() {
           <h3 className="font-medium">{entry.title}</h3><p className="text-sm text-slate-400 whitespace-pre-wrap">{entry.description}</p>
           <p className="text-xs text-slate-400">{entry.affected_system}{entry.vendor_reference && ` · ${entry.vendor_reference}`}{entry.handover && ' · Next shift attention'}{entry.due_at && ` · Due ${new Date(entry.due_at).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })} WAT`}{entry.scheduled_at && ` · Scheduled ${new Date(entry.scheduled_at).toLocaleString('en-GB', { timeZone: 'Africa/Lagos' })} WAT`}</p>
           {entry.due_at && new Date(entry.due_at) < new Date() && !terminal.has(entry.status) && <p className="text-xs text-red-300">Overdue</p>}
-          {entry.incident_id && <Link to="/incidents" className="text-xs text-cyan-300 underline">View linked incident</Link>}{entry.order_id && <Link to="/provisioning" className="text-xs text-cyan-300 underline">View FTTH orders</Link>}
+          {entry.incident_id && <Link to="/incidents" className="text-xs text-cyan-300 underline">{entry.ticket_id || 'View linked incident'}{entry.ticket_category && ` | ${entry.ticket_category}`}</Link>}{entry.order_id && <Link to="/provisioning" className="text-xs text-cyan-300 underline">View FTTH orders</Link>}
         </article>)}
         {!filtered.length && <p className="text-sm text-slate-400 p-6 text-center">No activities match these filters.</p>}
       </div>

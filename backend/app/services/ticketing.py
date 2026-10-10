@@ -11,11 +11,14 @@ def generate_tt_number(db: Session, ticket_category: str) -> str:
     format as the historical incident log: {CODE}_IM_{DDMMYYYY}_{SEQUENCE}
     e.g. PW_IM_04092026_0515
 
-    ticket_category must be one of: FIBER, POWER, TECHNICAL, MAINTENANCE, OTHER.
+    ticket_category must be one of: FIBER, POWER, TRANSMISSION, MAINTENANCE, OTHER.
     Falls back to OTHER/OT for anything unrecognized rather than failing the
     incident save — a bad category should never block logging an incident.
     """
-    code = TICKET_CATEGORY_CODES.get((ticket_category or "").upper(), "OT")
+    category = (ticket_category or "").strip().upper()
+    if category == "TECHNICAL":
+        category = "TRANSMISSION"
+    code = TICKET_CATEGORY_CODES.get(category, "OT")
 
     # Atomic upsert also handles simultaneous first tickets for a category.
     statement = insert(TicketSequence).values(category_code=code, last_sequence=1)

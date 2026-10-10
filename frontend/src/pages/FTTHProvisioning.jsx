@@ -7,8 +7,11 @@ import {
 import { provisioningApi, openProtectedDocument } from '../api/client';
 import FTTHAssignmentModal from '../components/FTTHAssignmentModal';
 import FTTHImportModal from '../components/FTTHImportModal';
+import RecordCorrectionModal from '../components/RecordCorrectionModal';
 
-const FTTHProvisioning = () => {
+const FTTHProvisioning = ({identity}) => {
+  const [correcting,setCorrecting]=useState(null);
+  const canWrite=identity.roles.some(role=>['NOC.Admin','NOC.Operator'].includes(role));
   const [viewType, setViewType] = useState('list');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -168,6 +171,7 @@ const FTTHProvisioning = () => {
       {assignmentOrder && <FTTHAssignmentModal order={assignmentOrder} onClose={() => setAssignmentOrder(null)} onAssigned={() => {
         setAssignmentOrder(null); setNotice('Infrastructure reserved and installation scheduled.'); fetchOrders();
       }} />}
+      {correcting&&<RecordCorrectionModal key={correcting} kind="ftth_order" id={correcting} onClose={()=>setCorrecting(null)} onSaved={()=>{setNotice('Details corrected. Linked customer/service records are synchronized. Existing PDFs retain their original snapshot.');fetchOrders();}}/>}
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
@@ -194,6 +198,7 @@ const FTTHProvisioning = () => {
                     <td className="px-6 py-4 font-mono text-xs">{order.nap_id ? <><span>{order.nap_code || 'NAP assigned'} · Port {order.nap_port}</span><p className="text-slate-500 mt-1">{order.drop_cable_code}</p></> : <span className="text-amber-300 flex items-center"><AlertTriangle size={12} className="mr-1"/> Needs Design</span>}</td>
                     <td className="px-6 py-4"><span className={getStatusBadge(order.status)}>{order.status.replace(/_/g, ' ')}</span></td>
                     <td className="px-6 py-4 space-x-3 flex items-center">
+                      {canWrite&&<button onClick={()=>setCorrecting(order.order_id)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded">Edit details</button>}
                       {order.status === 'REQUESTED' && <button onClick={() => setAssignmentOrder(order)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded">Assign & schedule</button>}
                       {order.status === 'SCHEDULED' && <button onClick={async () => { try { await provisioningApi.updateStatus(order.order_id, 'IN_PROGRESS'); fetchOrders(); } catch { setLoadError('Could not start installation. Refresh and retry.'); } }} className="text-sky-300 text-xs underline">Start installation</button>}
                       {(order.status === 'SCHEDULED' || order.status === 'IN_PROGRESS') && (
@@ -253,6 +258,7 @@ const FTTHProvisioning = () => {
                       <p className="text-gray-400 text-xs mt-1 truncate">{order.service_address}</p>
                       
                       <div className="mt-4 flex flex-wrap gap-2">
+                        {canWrite&&<button onClick={()=>setCorrecting(order.order_id)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded w-full">Edit details</button>}
                         {order.status === 'REQUESTED' && <button onClick={() => setAssignmentOrder(order)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded w-full">Assign & schedule</button>}
                         {order.status === 'SCHEDULED' && <button onClick={async () => { try { await provisioningApi.updateStatus(order.order_id, 'IN_PROGRESS'); fetchOrders(); } catch { setLoadError('Could not start installation. Refresh and retry.'); } }} className="text-sky-300 text-xs underline w-full">Start installation</button>}
                         {(order.status === 'SCHEDULED' || order.status === 'IN_PROGRESS') && (

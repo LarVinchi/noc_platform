@@ -6,6 +6,7 @@ from sqlalchemy.dialects.postgresql import insert
 from app.core.db import SessionLocal
 from app.core.security import actor_context
 from app.models.response import WorkerHeartbeat
+from app.models.provisioning import ServiceOrder  # Register the activity order foreign key for standalone worker flushes.
 from app.services.escalation import run_escalations
 from app.services.incident_response import now_utc
 

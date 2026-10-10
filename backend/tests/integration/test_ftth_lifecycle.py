@@ -60,7 +60,7 @@ def test_stage_history_counts_retry_and_blocker_resolution(api):
     assert report['lifetime']=={key:value+1 for key,value in before_report['lifetime'].items()}
     for key in ('accepted','completed','resolved_incidents'):
         assert report['period'][key]==before_report['period'][key]+1
-    assert any(value['category']=='TECHNICAL' and value['samples']>=1 for value in report['incident_mttr'])
+    assert any(value['category']=='TRANSMISSION' and value['samples']>=1 for value in report['incident_mttr'])
     assert report['unknown_acceptance_dates']==before_report['unknown_acceptance_dates']
     event=db.query(FtthStageEvent).filter_by(order_id=order['order_id']).first()
     with pytest.raises(DBAPIError),db.begin_nested():

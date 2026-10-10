@@ -25,7 +25,7 @@ from app.core.db import Base
 # Example:
 #   FIBER       -> OF
 #   POWER       -> PW
-#   TECHNICAL   -> TN
+#   TRANSMISSION   -> TN
 #   MAINTENANCE -> MA
 #   OTHER       -> OT
 #
@@ -40,7 +40,7 @@ from app.core.db import Base
 TICKET_CATEGORY_CODES = {
     "FIBER": "OF",
     "POWER": "PW",
-    "TECHNICAL": "TN",
+    "TRANSMISSION": "TN",
     "MAINTENANCE": "MA",
     "OTHER": "OT",
 }
@@ -245,7 +245,7 @@ class Incident(Base):
     # Valid values:
     #   FIBER
     #   POWER
-    #   TECHNICAL
+    #   TRANSMISSION
     #   MAINTENANCE
     #   OTHER
     ticket_category = Column(

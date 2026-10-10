@@ -101,7 +101,7 @@ def ingest(data, db):
             event.disposition = "applied"
             incident = db.get(Incident, mapping.incident_id) if mapping.incident_id else None
             if data.state == "down" and (incident is None or incident.status in {"resolved", "closed"}):
-                incident = Incident(tt_number=generate_tt_number(db, "TECHNICAL"), ticket_category="TECHNICAL",
+                incident = Incident(tt_number=generate_tt_number(db, "TRANSMISSION"), ticket_category="TRANSMISSION",
                     incident_type="Monitoring Alert",
                     status="open", severity="High", reported_at=data.observed_at.astimezone(timezone.utc).replace(tzinfo=None),
                     short_description=f"PRTG sensor {data.sensor_id} reports down",

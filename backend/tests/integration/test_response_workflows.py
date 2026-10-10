@@ -80,6 +80,7 @@ def test_scheduler_levels_are_idempotent_and_suppress_planned_incidents(api):
     from app.services.escalation import run_escalations
     from app.models.response import ResponseEvent, NotificationDraft
     policy(client)
+    run_escalations(session)  # Drain existing preview deadlines inside this rolled-back test transaction.
     start = datetime.now(timezone.utc)-timedelta(hours=1)
     active = incident(client,reported_at=start.isoformat())
     planned = incident(client,reported_at=start.isoformat(),is_planned=True)
@@ -139,6 +140,7 @@ def test_customer_deadline_escalation_and_obsolete_draft_invalidation(api):
     from app.services.escalation import run_escalations
     service = session.query(Service).first()
     policy(client,severity=None,service_id=str(service.service_id),acknowledgment_minutes=5,restoration_minutes=10)
+    run_escalations(session)  # Keep exact fixture counts independent of the persisted preview backlog.
     record = incident(client)
     start = datetime.now(timezone.utc)-timedelta(minutes=20)
     outage = client.post(f"/api/operations/incidents/{record['incident_id']}/outages",json={'service_id':str(service.service_id),'started_at':start.isoformat(),'note':'Connectivity loss verified by NOC'}).json()

@@ -58,7 +58,7 @@ def test_create_nap_and_validate_assignment(api):
 
 def test_shared_activity_incident_and_handover_fields(api):
     client, _ = api
-    payload = {"person": "TEST OPERATOR", "shift": "Night", "category": "Incident", "title": "Test link outage",
+    payload = {"person": "TEST OPERATOR", "shift": "Night", "category": "Incident", "ticket_category": "TRANSMISSION", "title": "Test link outage",
                "description": "Awaiting engineering investigation", "handover": True, "severity": "High"}
     response = client.post("/api/activities/", json=payload)
     assert response.status_code == 200, response.text
@@ -122,3 +122,25 @@ def test_alternate_path_is_recorded_without_claiming_health(api):
     row = next(row for row in impact["services"] if row["service_id"] == response.json()["service_id"])
     assert row["alternate_path_recorded"] is True
     assert row["service_health"] == "not_verified"
+
+
+@pytest.mark.parametrize('category,prefix',[('TRANSMISSION','TN'),('FIBER','OF'),('POWER','PW'),('MAINTENANCE','MA'),('OTHER','OT')])
+def test_activity_incident_category_and_current_ticket_id(api,category,prefix):
+    client,_=api
+    payload={'person':'CATEGORY TEST','shift':'Morning','category':'Incident','title':'Classification regression','ticket_category':category}
+    response=client.post('/api/activities/',json=payload)
+    assert response.status_code==200,response.text
+    entry=response.json()
+    incident=client.get(f"/api/incidents/{entry['incident_id']}").json()
+    assert entry['ticket_category']==incident['ticket_category']==category
+    assert entry['ticket_id']==incident['ticket_id'] and entry['ticket_id'].startswith(prefix+'_IM_')
+    path=f"/api/corrections/incident/{entry['incident_id']}"
+    state=client.get(path).json()
+    target='POWER' if category!='POWER' else 'TRANSMISSION'
+    assert client.patch(path,json={'expected_revision':state['revision'],'reason':'Correct activity classification','changes':{'ticket_category':target}}).status_code==200
+    refreshed=next(row for row in client.get('/api/activities/').json() if row['activity_id']==entry['activity_id'])
+    assert refreshed['incident_id']==entry['incident_id'] and refreshed['ticket_category']==target
+    assert refreshed['ticket_id']!=entry['ticket_id']
+    missing={key:value for key,value in payload.items() if key!='ticket_category'}
+    assert client.post('/api/activities/',json=missing).status_code==422
+    assert client.post('/api/activities/',json={**payload,'ticket_category':'INVALID'}).status_code==422
