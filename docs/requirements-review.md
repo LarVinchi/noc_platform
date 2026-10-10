@@ -23,7 +23,7 @@ and ticket prefixes are not application configuration or operational instruction
 | Service outage reporting | Confirmed/restored intervals, closure guards, overlapping downtime union, explicit exclusions and restored-episode MTTR; availability coverage remains unverified |
 | Communication review | Assignment/escalation/outage/restoration drafts with reviewed actor/time and superseded-draft protection; no delivery transport |
 | Document foundation | Private catalogue/uploads, immutable revisions, record links, owner/admin access, explicit NOC sharing, checksum-verified downloads and audit; no approval or RAG indexing |
-| Knowledge interface | Dedicated source workspace and incident/FTTH companion drawers, authorized revision inspection and real record facts; queries disabled until RAG integration |
+| Knowledge interface | Dedicated source workspace, global floating chat/source panel and active incident/FTTH context, authorized revision inspection and real record facts; queries disabled until RAG integration |
 | Delivery baseline | Single-command isolated preview, migrations, CI, unit/database-backed tests and frontend lint/build |
 
 Geographic customer pins use serving-NAP coordinates or a route endpoint anchor.

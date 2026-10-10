@@ -242,7 +242,9 @@ For example, on an FTTH case: “Which earlier RCA describes this NAP fault?” 
 for this FN” or “Draft a weekly report from the selected reporting window.”
 Exact totals use authorized SQL reporting, not estimated sums from retrieved text.
 
-The dedicated Knowledge workspace and incident/FTTH companion drawers now exist
+The dedicated Knowledge workspace and global floating chat/source panel now exist,
+with active incident/FTTH case context. The floating design supersedes the original
+side-by-side drawer proposal above following the requested bottom-right launcher.
 as an interface foundation; see [the preview guide](knowledge-workspace.md).
 They show authorized source metadata and real case facts, with queries disabled.
 Customer/service drawers remain pending. Implement the integration

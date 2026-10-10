@@ -1,20 +1,26 @@
-# Knowledge workspace and case assistant preview
+# Knowledge workspace and floating assistant preview
 
 Start the platform with `./dev.ps1` and open http://localhost:5173.
 The sidebar's **Knowledge assistant** opens `/knowledge` with a question panel
-and an authorized source catalogue. The opening guide links to the case pages.
+and an authorized source catalogue. A bottom-right **AI assistant** launcher is
+available on every signed-in page. It opens a compact chat-style panel with
+**Chat** and **Sources** tabs and a link to the full Knowledge workspace.
+The launcher remains available inside topology full-screen mode.
 
-To open the companion drawer:
+To supply case context automatically, open a case. These buttons also open the panel:
 
 1. **Response centre → Manage response → Ask about this incident**.
 2. Or **FTTH operations → History / incidents → Ask about this FTTH case**.
 
-On wide screens the case and assistant remain side by side. On smaller screens
-the assistant occupies the case panel; its close button returns to the case.
-Escape closes the assistant first without closing incident history. The drawer
-shows actual record facts and documents directly linked to that incident/order.
+On desktop the assistant floats above the current page without moving the layout.
+On mobile it fills the screen, confines keyboard focus and uses **Minimize** to
+return to the page. Escape minimizes it first without closing incident history.
+The panel shows actual record facts and directly linked documents for an active
+incident/order. Closing a case switches to the page context and clears its draft;
+switching pages closes the assistant and clears context. Minimizing also clears
+the draft. No local storage retains questions or case data.
 Related service documents are not automatically included in this first slice.
-Customer/service drawers remain follow-up work.
+Customer/service context remains follow-up work.
 
 ## Available now
 
@@ -41,13 +47,16 @@ nor sent to an API/model. This preview does not provide a conversation history.
 Next, integrate the colleague's RAG/completeness tools behind an adapter, add
 reviewed source approval and validated extraction, then test permission-filtered
 retrieval, exact version/page/sheet citations and answer quality before enabling
-queries. Operational totals and MTTR continue to come from SQL reports. Generated
+queries. The introductory chat bubble is static preview guidance, not a generated
+answer; no artificial conversation history is added. Operational totals and MTTR
+continue to come from SQL reports. Generated
 handover/RCA/email drafts require human review and the approved templates.
 
 ## Verification
 
 The backend status test verifies unavailable capabilities and private catalogue
 counts. Browser checks exercise source inspection with an explicit UI fixture,
-real incident/FTTH record context, desktop positioning, mobile return, Escape,
+real incident/FTTH record context, floating desktop positioning, mobile focus
+confinement and return, Escape, context/draft clearing and topology full-screen access,
 absence of browser errors and no AI query submissions. The fixture is not stored
 in the platform.

@@ -2,6 +2,8 @@ import { createElement, useEffect, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, Network, LogOut, Clock3, ChevronRight, FileText, Mail, BookOpen } from 'lucide-react';
 import { incidentsApi } from '../api/client';
+import AssistantProvider from './AssistantProvider';
+import FloatingAssistant from './FloatingAssistant';
 
 const pages = { '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
 const navigation = [
@@ -34,7 +36,7 @@ export default function NocAppShell({ children, identity, onLogout }) {
   const time = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Lagos' });
   const hour = Number(now.toLocaleString('en-GB', { timeZone: 'Africa/Lagos', hour: '2-digit', hourCycle: 'h23' }));
   const shift = hour >= 6 && hour < 14 ? 'Morning' : hour >= 14 && hour < 22 ? 'Afternoon' : 'Night';
-  return <div className={`noc-shell ${collapsed ? 'nav-collapsed' : ''}`}>
+  return <AssistantProvider key={pathname}><div className={`noc-shell ${collapsed ? 'nav-collapsed' : ''}`}>
     <aside className="noc-sidebar">
       <Link to="/" className="noc-brand" aria-label="NOC operations overview"><span className="noc-brand-mark"><Network size={23} /></span><span className="nav-copy"><strong>AFL<span>NOC</span></strong><small>NETWORK OPERATIONS</small></span></Link>
       <nav aria-label="Main navigation" className="noc-navigation">
@@ -50,5 +52,5 @@ export default function NocAppShell({ children, identity, onLogout }) {
       </header>
       <div className={`noc-content ${pathname === '/topology' ? 'noc-content-map' : ''}`}>{children}</div>
     </main>
-  </div>;
+  </div><FloatingAssistant page={pages[pathname]||'Workspace'}/></AssistantProvider>;
 }
