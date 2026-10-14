@@ -6,6 +6,15 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import your Base and your Model
 from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
+from app.core.config import settings
+from app.models.activity import ActivityEntry
+from app.models.documents import Document, DocumentVersion
+from app.models.ftth_operations import FtthStageEvent,FtthIncidentLink
+from app.models.mail import MailTriageItem
+from app.models.corrections import RecordCorrection,IncidentTicketIdentifier
+from app.models.network_map import NetworkMapImport, MapRouteLink
+from app.models.monitoring import SensorMapping, MonitoringEvent
+from app.models.response import Engineer, ResponsePolicy, ServiceOutage, ResponseEvent, NotificationDraft, WorkerHeartbeat
 from app.models.provisioning import ServiceOrder
 from app.models.incidents import Incident, Ticket, TicketSequence
 from logging.config import fileConfig
@@ -17,13 +26,14 @@ from alembic import context
 
 def include_object(object, name, type_, reflected, compare_to):
     # Ignore PostGIS system tables
-    if type_ == "table" and name == "spatial_ref_sys":
+    if type_ == "table" and name in {"spatial_ref_sys", "audit_events"}:
         return False
     return True
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
 config = context.config
+config.set_main_option("sqlalchemy.url", settings.SQLALCHEMY_DATABASE_URI.replace("%", "%%"))
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.

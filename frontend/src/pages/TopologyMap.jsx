@@ -1,291 +1,112 @@
-import React, { useCallback, useMemo, useState, useEffect } from 'react';
-import ReactFlow, { 
-  MiniMap, Controls, Background, useNodesState, useEdgesState, addEdge
-} from 'reactflow';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Link } from 'react-router-dom';
+import ReactFlow, { MiniMap, Controls, Background, BackgroundVariant } from 'reactflow';
 import dagre from 'dagre';
+import { Search, LocateFixed, RefreshCw, Expand, Minus, Plus, X, Route, Network, ArrowDownUp, ChevronRight, Info, AlertTriangle } from 'lucide-react';
 import 'reactflow/dist/style.css';
-import apiClient from '../api/client'; 
+import apiClient from '../api/client';
+import { NetworkNode } from '../components/TopologyNodes';
+import CableEdge from '../components/CableEdge';
 
-import { CoreNode, CableNode, SplitterNode, CustomerNode } from '../components/TopologyNodes';
-import { Activity, X, Info, Activity as ActivityIcon, MapPin, Hash, Search, Eye, Navigation, Wrench } from 'lucide-react';
+const nodeTypes = Object.fromEntries(['core', 'cable', 'primary_splitter', 'secondary_splitter', 'access_point', 'cpe_outlet', 'dia_endpoint', 'dark_fiber_endpoint', 'layer2_endpoint'].map(type => [type, NetworkNode]));
+const edgeTypes = { fibre: CableEdge };
+const colors = { core: '#59c7ff', cable: '#7d9cff', primary_splitter: '#bba1ff', secondary_splitter: '#be8ef5', access_point: '#55d5ce', cpe_outlet: '#efbd77' };
+function related(id, edges, direction) {
+  const found = new Set([id]), queue = [id];
+  while (queue.length) { const current = queue.shift(); for (const edge of edges) { const next = direction === 'up' ? edge.target === current && edge.source : edge.source === current && edge.target; if (next && !found.has(next)) { found.add(next); queue.push(next); } } }
+  return found;
+}
+function mergeGraph(previous, next) {
+  const nodes = new Map(previous.nodes.map(node => [node.id, node])); const edges = new Map(previous.edges.map(edge => [edge.id, edge]));
+  next.nodes.forEach(node => nodes.set(node.id, node)); next.edges.forEach(edge => edges.set(edge.id, edge));
+  return { nodes: [...nodes.values()], edges: [...edges.values()] };
+}
 
-// --- Dagre Auto-Layout Configuration ---
-const getLayoutedElements = (nodes, edges, direction = 'LR') => {
-  const dagreGraph = new dagre.graphlib.Graph();
-  dagreGraph.setDefaultEdgeLabel(() => ({}));
-  
-  dagreGraph.setGraph({ rankdir: direction, ranksep: 250, nodesep: 100 });
-
-  nodes.forEach((node) => {
-    dagreGraph.setNode(node.id, { width: 280, height: 100 });
-  });
-
-  edges.forEach((edge) => {
-    dagreGraph.setEdge(edge.source, edge.target);
-  });
-
-  dagre.layout(dagreGraph);
-
-  const layoutedNodes = nodes.map((node) => {
-    const nodeWithPosition = dagreGraph.node(node.id);
-    return {
-      ...node,
-      targetPosition: 'left',
-      sourcePosition: 'right',
-      position: { x: nodeWithPosition.x - 140, y: nodeWithPosition.y - 50 },
-    };
-  });
-
-  return { layoutedNodes, layoutedEdges: edges };
-};
-
-const TopologyMap = () => {
-  const nodeTypes = useMemo(() => ({
-    core: CoreNode, cable: CableNode, primary_splitter: SplitterNode, secondary_splitter: SplitterNode,
-    access_point: SplitterNode, cpe_outlet: CustomerNode, dia_endpoint: CustomerNode,
-    dark_fiber_endpoint: CustomerNode, layer2_endpoint: CustomerNode,
-  }), []);
-
-  // --- Master State Variables ---
-  const [originalData, setOriginalData] = useState({ nodes: [], edges: [] });
-  const [collapsedNodes, setCollapsedNodes] = useState(new Set());
-  
-  // --- React Flow State ---
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  
-  // --- UI State ---
-  const [loading, setLoading] = useState(true);
-  const [selectedNode, setSelectedNode] = useState(null);
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [rfInstance, setRfInstance] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [contextMenu, setContextMenu] = useState(null);
-
-  // --- Helper: Format Edges ---
-  const formatEdges = (edgesToFormat) => edgesToFormat.map(e => ({
-    ...e, type: 'smoothstep', style: { strokeWidth: 2, stroke: '#64748b' }
-  }));
-
-  // --- Fetch Base Topology ---
+export default function TopologyMap() {
+  const [graph, setGraph] = useState({ nodes: [], edges: [] }), [collapsed, setCollapsed] = useState(new Set());
+  const [selectedId, setSelectedId] = useState(null), [traceId, setTraceId] = useState(null), [query, setQuery] = useState('');
+  const [direction, setDirection] = useState('TB'), [error, setError] = useState(''), [loading, setLoading] = useState(true), [pending, setPending] = useState(new Set());
+  const [revision, setRevision] = useState(0), [impact, setImpact] = useState(null), [menu, setMenu] = useState(null), [focusId, setFocusId] = useState(null);
+  const flow = useRef(null), root = useRef(null), loaded = useRef(new Set()), inFlight = useRef(new Map());
+  const impactRequest = useRef(null);
+  const selected = graph.nodes.find(node => node.id === selectedId);
   useEffect(() => {
-    apiClient.get('/topology/')
-      .then((response) => {
-        const styledEdges = formatEdges(response.data.edges);
-        setOriginalData({ nodes: response.data.nodes, edges: styledEdges });
+    const controller = new AbortController(); setLoading(true); setError('');
+    const requests = inFlight.current;
+    apiClient.get('/topology/', { signal: controller.signal }).then(({ data }) => {
+      if (!controller.signal.aborted) { setGraph(data); setCollapsed(new Set()); loaded.current = new Set(); setSelectedId(null); setTraceId(null); }
+    }).catch(() => { if (!controller.signal.aborted) setError('Logical inventory could not be loaded. Retry the inventory feed.'); }).finally(() => { if (!controller.signal.aborted) setLoading(false); });
+    return () => { controller.abort(); requests.forEach(controller => controller.abort()); requests.clear(); };
+  }, [revision]);
 
-        const { layoutedNodes, layoutedEdges } = getLayoutedElements(response.data.nodes, styledEdges);
-        setNodes(layoutedNodes);
-        setEdges(layoutedEdges);
-        setLoading(false);
-        setTimeout(() => rfInstance?.fitView({ padding: 0.2, duration: 800 }), 100);
-      })
-      .catch((error) => {
-        console.error("Error fetching topology:", error);
-        setLoading(false);
-      });
-  }, [setNodes, setEdges, rfInstance]);
+  async function expandCable(node) {
+    if (loaded.current.has(node.id) || inFlight.current.has(node.id)) return;
+    const controller = new AbortController(); inFlight.current.set(node.id, controller); setPending(previous => new Set([...previous, node.id]));
+    try {
+      const { data } = await apiClient.get(`/topology/expand/${node.id}`, { signal: controller.signal });
+      if (!controller.signal.aborted) { setGraph(previous => mergeGraph(previous, data)); loaded.current.add(node.id); setCollapsed(previous => { const next = new Set(previous); next.delete(node.id); return next; }); }
+    } catch { if (!controller.signal.aborted) setError(`Could not expand ${node.data.label}. Retry this cable.`); }
+    finally { inFlight.current.delete(node.id); setPending(previous => { const next = new Set(previous); next.delete(node.id); return next; }); }
+  }
+  async function toggleBranch(node) {
+    setMenu(null);
+    if (node.type === 'cable' && !loaded.current.has(node.id)) { await expandCable(node); return; }
+    if (!graph.edges.some(edge => edge.source === node.id)) return;
+    setCollapsed(previous => { const next = new Set(previous); if (next.has(node.id)) next.delete(node.id); else next.add(node.id); return next; });
+  }
+  async function expandAll() { setError(''); setCollapsed(new Set()); await Promise.all(graph.nodes.filter(node => node.type === 'cable').map(expandCable)); }
+  const layout = useMemo(() => {
+    // Traverse from roots instead of hiding all descendants: a shared endpoint
+    // remains visible when another uncollapsed branch still reaches it.
+    const targets = new Set(graph.edges.map(edge => edge.target)), visible = new Set(), queue = graph.nodes.filter(node => !targets.has(node.id)).map(node => node.id);
+    while (queue.length) { const id = queue.shift(); if (visible.has(id)) continue; visible.add(id); if (!collapsed.has(id)) graph.edges.filter(edge => edge.source === id).forEach(edge => queue.push(edge.target)); }
+    const nodes = graph.nodes.filter(node => visible.has(node.id)), edges = graph.edges.filter(edge => visible.has(edge.source) && visible.has(edge.target) && !collapsed.has(edge.source));
+    const traced = traceId ? new Set([...related(traceId, graph.edges, 'up'), ...related(traceId, graph.edges, 'down')]) : null;
+    const engine = new dagre.graphlib.Graph(); engine.setDefaultEdgeLabel(() => ({})); engine.setGraph({ rankdir: direction, ranksep: direction === 'TB' ? 95 : 230, nodesep: 60, marginx: 50, marginy: 65 });
+    nodes.forEach(node => engine.setNode(node.id, { width: 276, height: 128 })); edges.forEach(edge => engine.setEdge(edge.source, edge.target)); dagre.layout(engine);
+    return {
+      nodes: nodes.map(node => ({ ...node, selected: node.id === selectedId, draggable: false, data: { ...node.data, direction }, position: { x: engine.node(node.id).x - 138, y: engine.node(node.id).y - 64 }, style: { opacity: traced && !traced.has(node.id) ? .16 : 1 } })),
+      edges: edges.map(edge => ({ ...edge, type: 'fibre', animated: false, style: { ...edge.style, stroke: edge.style?.stroke || '#7186a6', opacity: traced && !(traced.has(edge.source) && traced.has(edge.target)) ? .08 : 1 } })),
+    };
+  }, [graph, collapsed, direction, traceId, selectedId]);
 
-  const onConnect = useCallback((params) => setEdges((eds) => addEdge(params, eds)), [setEdges]);
-
-  // --- Traversal Helpers ---
-  const getDescendants = useCallback((nodeId, allEdges) => {
-    const descendants = [];
-    const queue = [nodeId];
-    while (queue.length > 0) {
-      const curr = queue.shift();
-      const children = allEdges.filter(e => e.source === curr).map(e => e.target);
-      descendants.push(...children);
-      queue.push(...children);
-    }
-    return descendants;
-  }, []);
-
-  const getConnectedGraph = useCallback((targetNodeId, allEdges) => {
-    const connectedNodes = new Set([targetNodeId]);
-    const connectedEdges = new Set();
-    // Upstream
-    let queue = [targetNodeId];
-    while (queue.length > 0) {
-      const current = queue.shift();
-      allEdges.forEach(edge => {
-        if (edge.target === current) {
-          connectedEdges.add(edge.id);
-          if (!connectedNodes.has(edge.source)) { connectedNodes.add(edge.source); queue.push(edge.source); }
-        }
-      });
-    }
-    // Downstream
-    queue = [targetNodeId];
-    while (queue.length > 0) {
-      const current = queue.shift();
-      allEdges.forEach(edge => {
-        if (edge.source === current) {
-          connectedEdges.add(edge.id);
-          if (!connectedNodes.has(edge.target)) { connectedNodes.add(edge.target); queue.push(edge.target); }
-        }
-      });
-    }
-    return { connectedNodes, connectedEdges };
-  }, []);
-
-  // --- Render Visible Layout ---
-  const updateVisibleLayout = useCallback((origNodes, origEdges, collapsedSet) => {
-    const hiddenNodeIds = new Set();
-    collapsedSet.forEach(collapsedId => {
-      const descendants = getDescendants(collapsedId, origEdges);
-      descendants.forEach(d => hiddenNodeIds.add(d));
-    });
-
-    const activeNodes = origNodes.filter(n => !hiddenNodeIds.has(n.id));
-    const activeEdges = origEdges.filter(e => !hiddenNodeIds.has(e.target) && !hiddenNodeIds.has(e.source));
-
-    const { layoutedNodes, layoutedEdges } = getLayoutedElements(activeNodes, activeEdges);
-    setNodes(layoutedNodes);
-    setEdges(layoutedEdges);
-  }, [getDescendants, setNodes, setEdges]);
-
-  // --- Search & Camera Controls ---
-  const executeSearch = (term) => {
-    if (!term || !term.trim()) { clearSearch(); return; }
-    if (!rfInstance) return;
-
-    const targetNode = nodes.find(n => 
-      n.data?.label?.toLowerCase().includes(term.toLowerCase()) || n.id.toLowerCase().includes(term.toLowerCase())
-    );
-
-    if (targetNode) {
-      const { connectedNodes, connectedEdges } = getConnectedGraph(targetNode.id, edges);
-      setNodes(nds => nds.map(n => ({ ...n, style: { ...n.style, opacity: connectedNodes.has(n.id) ? 1 : 0.15, transition: 'opacity 0.4s ease' }})));
-      setEdges(eds => eds.map(e => ({ ...e, style: { ...e.style, opacity: connectedEdges.has(e.id) ? 1 : 0.05, transition: 'opacity 0.4s ease' }, animated: connectedEdges.has(e.id)})));
-      rfInstance.fitBounds({ x: targetNode.position.x - 200, y: targetNode.position.y - 200, width: 400, height: 400 }, { duration: 1000 });
-    }
-  };
-
-  const clearSearch = () => {
-    setSearchQuery("");
-    setCollapsedNodes(new Set()); // Auto-expand everything on clear
-    updateVisibleLayout(originalData.nodes, originalData.edges, new Set());
-    setTimeout(() => recenterMap(), 50);
-  };
-
-  const recenterMap = () => {
-    if (rfInstance) rfInstance.fitView({ padding: 0.2, duration: 800 });
-  };
-
-  // --- Node Interactions ---
-  const onNodeClick = useCallback((event, node) => { setContextMenu(null); setSelectedNode(node); }, []);
-  const onPaneClick = useCallback(() => { setContextMenu(null); setSelectedNode(null); setIsSidebarOpen(false); }, []);
-  const onNodeContextMenu = useCallback((event, node) => {
-    event.preventDefault(); setSelectedNode(node); setContextMenu({ id: node.id, top: event.clientY, left: event.clientX, node: node });
-  }, []);
-
-  // --- Flawless Expand / Collapse Logic ---
-  const onNodeDoubleClick = useCallback((event, node) => {
-    const childEdges = originalData.edges.filter(e => e.source === node.id);
-    
-    // 1. If we already fetched the children previously, just toggle visibility
-    if (childEdges.length > 0) {
-      setCollapsedNodes(prev => {
-        const newCollapsed = new Set(prev);
-        if (newCollapsed.has(node.id)) newCollapsed.delete(node.id); // Expand
-        else newCollapsed.add(node.id); // Collapse
-        
-        updateVisibleLayout(originalData.nodes, originalData.edges, newCollapsed);
-        setTimeout(() => rfInstance?.fitView({ padding: 0.2, duration: 800 }), 50);
-        return newCollapsed;
-      });
-      return;
-    }
-
-    // 2. If no children exist in memory and it's a cable, fetch from API
-    if (node.type === 'cable') {
-      apiClient.get(`/topology/expand/${node.id}`)
-        .then((response) => {
-          const existingNodeIds = new Set(originalData.nodes.map(n => n.id));
-          const existingEdgeIds = new Set(originalData.edges.map(e => e.id));
-          
-          const newNodes = response.data.nodes.filter(n => !existingNodeIds.has(n.id));
-          const newEdges = formatEdges(response.data.edges.filter(e => !existingEdgeIds.has(e.id)));
-
-          const combinedNodes = [...originalData.nodes, ...newNodes];
-          const combinedEdges = [...originalData.edges, ...newEdges];
-
-          setOriginalData({ nodes: combinedNodes, edges: combinedEdges });
-          updateVisibleLayout(combinedNodes, combinedEdges, collapsedNodes);
-
-          setTimeout(() => { if (rfInstance) rfInstance.fitView({ padding: 0.2, duration: 800 }); }, 100);
-        })
-        .catch(console.error);
-    }
-  }, [originalData, collapsedNodes, updateVisibleLayout, rfInstance]);
-
-
-  if (loading) return <div className="h-full w-full flex items-center justify-center bg-charcoal-900"><Activity className="animate-spin text-cyan-500 mb-4" size={32} /></div>;
-
-  return (
-    <div className="h-full w-full flex flex-col relative overflow-hidden bg-charcoal-950 rounded-xl border border-charcoal-700 shadow-inner">
-      
-      {/* Search & Control Overlay */}
-      <div className="absolute top-4 left-4 z-10 flex items-center space-x-3 bg-charcoal-900/80 p-2 rounded-lg backdrop-blur-sm border border-charcoal-700 shadow-xl">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={16} />
-          <input type="text" placeholder="Search nodes, IDs..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && executeSearch(searchQuery)} className="pl-9 pr-4 py-1.5 w-64 bg-charcoal-800 border border-charcoal-600 rounded-md text-sm text-white focus:outline-none focus:border-cyan-400" />
-        </div>
-        <button onClick={() => executeSearch(searchQuery)} className="bg-cyan-600 hover:bg-cyan-500 text-white px-3 py-1.5 rounded-md text-sm transition-colors">Highlight</button>
-        <div className="h-5 w-px bg-charcoal-600 mx-1"></div>
-        <button onClick={clearSearch} className="bg-charcoal-800 hover:bg-charcoal-700 text-gray-300 px-3 py-1.5 rounded-md border border-charcoal-600 text-sm transition-colors">Clear Map</button>
-        <button onClick={recenterMap} className="bg-charcoal-800 hover:bg-charcoal-700 text-cyan-400 px-3 py-1.5 rounded-md border border-charcoal-600 flex items-center text-sm transition-colors"><MapPin size={14} className="mr-2" /> Recenter</button>
-      </div>
-
-      <ReactFlow
-        onInit={setRfInstance} nodes={nodes} edges={edges} nodeTypes={nodeTypes}
-        onNodesChange={onNodesChange} onEdgesChange={onEdgesChange} onConnect={onConnect}
-        onNodeClick={onNodeClick} onPaneClick={onPaneClick} onNodeDoubleClick={onNodeDoubleClick} 
-        onNodeContextMenu={onNodeContextMenu} fitView
-      >
-        <Background color="#334155" gap={16} size={1} />
-        <Controls className="bg-charcoal-800 fill-white border-charcoal-700" />
-        <MiniMap maskColor="rgba(15, 23, 42, 0.7)" className="bg-charcoal-800 border-charcoal-700" />
-      </ReactFlow>
-
-      {/* Context Menu */}
-      {contextMenu && (
-        <div className="absolute z-50 bg-charcoal-800 border border-charcoal-600 shadow-2xl rounded-lg py-2 w-56 text-sm" style={{ top: contextMenu.top, left: contextMenu.left }}>
-          <div className="px-4 py-1 text-xs text-gray-400 font-semibold uppercase tracking-wider border-b border-charcoal-700 mb-1">{contextMenu.node.data?.label}</div>
-          <button onClick={() => { setIsSidebarOpen(true); setContextMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-charcoal-700 text-gray-200 flex items-center transition-colors"><Eye size={16} className="mr-3 text-cyan-400" /> View Node Details</button>
-          <button onClick={() => { executeSearch(contextMenu.node.data.label); setContextMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-charcoal-700 text-gray-200 flex items-center transition-colors"><Navigation size={16} className="mr-3 text-purple-400" /> Run Fiber Trace</button>
-          <button onClick={() => { alert(`Opening Incident Ticket for: ${contextMenu.node.data.label}`); setContextMenu(null); }} className="w-full text-left px-4 py-2 hover:bg-charcoal-700 text-gray-200 flex items-center transition-colors"><Wrench size={16} className="mr-3 text-orange-400" /> Create Ticket</button>
-        </div>
-      )}
-
-      {/* Floating Action Pill */}
-      {selectedNode && !isSidebarOpen && (
-        <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 bg-charcoal-800 border border-cyan-500/50 shadow-2xl rounded-full px-6 py-3 flex items-center gap-4 z-40 animate-fade-in-up">
-          <span className="text-gray-400 text-sm">Selected: <strong className="text-white ml-1">{selectedNode.data?.label}</strong></span>
-          <div className="h-5 w-px bg-charcoal-600"></div>
-          <button onClick={() => setIsSidebarOpen(true)} className="flex items-center text-cyan-400 text-sm font-semibold hover:text-cyan-300 transition-colors"><Eye size={16} className="mr-2" /> View Details</button>
-        </div>
-      )}
-
-      {/* Slide-Out Sidebar */}
-      <div className={`absolute top-0 right-0 w-80 h-full bg-charcoal-900 border-l border-charcoal-700 shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-in-out ${isSidebarOpen ? 'translate-x-0' : 'translate-x-full'}`}>
-        {selectedNode && (
-          <>
-            <div className="p-4 border-b border-charcoal-700 flex justify-between items-center bg-charcoal-950">
-              <div className="flex items-center space-x-2"><Info className="text-cyan-400" size={20} /><h3 className="text-lg font-bold text-white tracking-wide truncate">{selectedNode.data?.label}</h3></div>
-              <button onClick={() => setIsSidebarOpen(false)} className="text-gray-400 hover:text-white transition-colors"><X size={20} /></button>
-            </div>
-            <div className="p-4 flex-1 overflow-y-auto text-sm space-y-4">
-              <div className="bg-charcoal-800 p-3 rounded-lg border border-charcoal-700"><div className="flex items-center text-gray-400 mb-1"><Hash size={14} className="mr-2" /><span className="text-xs uppercase tracking-wider">Type</span></div><div className="font-semibold text-white capitalize">{selectedNode.data?.type || selectedNode.type}</div></div>
-              {selectedNode.data?.badge && (<div className="bg-charcoal-800 p-3 rounded-lg border border-charcoal-700"><div className="flex items-center text-gray-400 mb-1"><MapPin size={14} className="mr-2" /><span className="text-xs uppercase tracking-wider">Capacity</span></div><div className="font-semibold text-cyan-400">{selectedNode.data.badge}</div></div>)}
-              <div className="bg-charcoal-800 p-3 rounded-lg border border-charcoal-700"><div className="flex items-center text-gray-400 mb-2"><ActivityIcon size={14} className="mr-2" /><span className="text-xs uppercase tracking-wider">Status</span></div><div className="font-semibold text-green-400 flex items-center"><span className="w-2.5 h-2.5 rounded-full bg-green-500 mr-2 animate-pulse"></span> Online & Active</div></div>
-            </div>
-          </>
-        )}
-      </div>
+  useEffect(() => {
+    if (!focusId || !flow.current) return;
+    const node = layout.nodes.find(node => node.id === focusId);
+    if (node) { flow.current.setCenter(node.position.x + 138, node.position.y + 64, { zoom: 1, duration: 500 }); setFocusId(null); }
+  }, [focusId, layout]);
+  useEffect(() => { setImpact(null); impactRequest.current?.abort(); return () => impactRequest.current?.abort(); }, [selectedId]);
+  const matches = query.trim() ? graph.nodes.filter(node => `${node.data.label} ${node.data.type} ${node.id}`.toLowerCase().includes(query.toLowerCase().trim())).slice(0, 10) : [];
+  function focusNode(node) {
+    const ancestors = related(node.id, graph.edges, 'up'); setCollapsed(previous => new Set([...previous].filter(id => !ancestors.has(id))));
+    setSelectedId(node.id); setTraceId(node.id); setFocusId(node.id); setQuery('');
+  }
+  function fit() { flow.current?.fitView({ padding: .18, duration: 500 }); }
+  async function loadImpact() {
+    impactRequest.current?.abort(); const controller = new AbortController(); impactRequest.current = controller;
+    try { const { data } = await apiClient.get(selected.type === 'cable' ? `/topology/cable-impact/${selected.id}` : `/topology/impact/${selected.id}`, { signal: controller.signal }); if (!controller.signal.aborted) setImpact(data); }
+    catch { if (!controller.signal.aborted) setError('Customer dependency analysis is unavailable.'); }
+  }
+  return <div className="logical-workspace" ref={root}>
+    <div className="logical-toolbar"><div className="logical-search"><Search size={16} /><input aria-label="Search logical network" placeholder="Find a route, cable or loaded customer…" value={query} onChange={event => setQuery(event.target.value)} onKeyDown={event => { if (event.key === 'Enter' && matches[0]) focusNode(matches[0]); if (event.key === 'Escape') setQuery(''); }} />{query && <button onClick={() => setQuery('')} aria-label="Clear network search"><X size={14} /></button>}
+      {query && <div className="logical-search-results">{matches.map(node => <button key={node.id} onClick={() => focusNode(node)}><span style={{ color: colors[node.type] || '#efbd77' }}>{node.data.type}</span><strong>{node.data.label}</strong></button>)}{!matches.length && <p>No loaded nodes match. Expand cables to search their customers.</p>}</div>}</div>
+      <button className="fv-button" onClick={fit}><LocateFixed size={15} />Fit network</button><button className="fv-button" disabled={pending.size > 0 || loading} onClick={expandAll}><Expand size={15} />{pending.size ? `Loading ${pending.size}…` : 'Expand cables'}</button><button className="fv-button" onClick={() => setDirection(value => value === 'LR' ? 'TB' : 'LR')}><ArrowDownUp size={15} />{direction === 'LR' ? 'Vertical layout' : 'Horizontal layout'}</button><button className="noc-icon-button" onClick={() => setRevision(value => value + 1)} aria-label="Refresh logical inventory"><RefreshCw size={16} /></button>
     </div>
-  );
-};
-
-export default TopologyMap;
+    {error && <div className="logical-error" role="alert"><AlertTriangle size={15} />{error}<button onClick={() => setError('')} aria-label="Dismiss error"><X size={14} /></button></div>}
+    {loading && <div className="logical-loading">Loading infrastructure…</div>}
+    {!loading && !graph.nodes.length && !error && <div className="logical-loading">No active routes or cables are recorded yet.</div>}
+    <ReactFlow nodes={layout.nodes} edges={layout.edges} nodeTypes={nodeTypes} edgeTypes={edgeTypes} onInit={instance => { flow.current = instance; }} onNodeClick={(_, node) => { setSelectedId(node.id); setMenu(null); }} onNodeDoubleClick={(_, node) => toggleBranch(node)} onPaneClick={() => { setSelectedId(null); setMenu(null); }}
+      onNodeContextMenu={(event, node) => { event.preventDefault(); setSelectedId(node.id); const rect = root.current.getBoundingClientRect(); setMenu({ x: Math.min(event.clientX - rect.left, rect.width - 220), y: Math.min(event.clientY - rect.top, rect.height - 160), node }); }}
+      nodesConnectable={false} edgesUpdatable={false} deleteKeyCode={null} fitView minZoom={.08} maxZoom={2} zoomOnDoubleClick={false} proOptions={{ hideAttribution: true }}>
+      <Background variant={BackgroundVariant.Dots} color="#26394c" gap={24} size={1} /><Controls showInteractive={false} /><MiniMap pannable zoomable nodeColor={node => colors[node.type] || '#efbd77'} maskColor="rgba(5,13,22,.75)" />
+    </ReactFlow>
+    <div className="logical-network-summary"><span><Network size={13} />{layout.nodes.length} nodes</span><span>{layout.edges.length} links</span><span>Inventory relationships · health unverified</span></div>
+    {traceId && <div className="logical-trace-banner"><Route size={15} />Tracing {graph.nodes.find(node => node.id === traceId)?.data.label}<button onClick={() => setTraceId(null)}>Clear trace <X size={13} /></button></div>}
+    <div className="logical-legend"><strong>NETWORK ELEMENTS</strong>{[['core', 'Route'], ['cable', 'Fibre cable'], ['primary_splitter', 'PFP cabinet'], ['secondary_splitter', 'PFS splitter'], ['access_point', 'NAP terminal'], ['cpe_outlet', 'Customer / ONT']].map(([type, label]) => <span key={type}><i style={{ background: colors[type] }} />{label}</span>)}<small>Double-click a cable to expand its infrastructure</small></div>
+    {selected && <aside className="logical-inspector"><div className="fibre-details-heading"><span className="eyebrow">ELEMENT INSPECTOR</span><button className="noc-icon-button" onClick={() => setSelectedId(null)} aria-label="Close element inspector"><X size={17} /></button></div><h2>{selected.data.label}</h2><span className="fv-badge unknown">{selected.data.type}</span><dl><div><dt>Capacity / allocation</dt><dd>{selected.data.badge || 'Unrecorded'}</dd></div>{selected.data.total_cores != null && <div><dt>Physical cable capacity</dt><dd>{selected.data.total_cores} cores · {selected.data.recorded_cores} core records</dd></div>}<div><dt>Service health</dt><dd>Unverified · inventory is not a health check</dd></div><div><dt>Inventory ID</dt><dd className="inspector-id">{selected.id}</dd></div></dl>
+      <div className="logical-inspector-actions"><button className="fv-button primary" onClick={() => setTraceId(selected.id)}><Route size={15} />Trace dependencies</button>{(selected.type === 'cable' || graph.edges.some(edge => edge.source === selected.id)) && <button className="fv-button" disabled={pending.has(selected.id)} onClick={() => toggleBranch(selected)}>{collapsed.has(selected.id) || (selected.type === 'cable' && !loaded.current.has(selected.id)) ? <Plus size={15} /> : <Minus size={15} />}{pending.has(selected.id) ? 'Loading…' : collapsed.has(selected.id) || !graph.edges.some(edge => edge.source === selected.id) ? 'Expand branch' : 'Collapse branch'}</button>}{['core', 'cable'].includes(selected.type) && <button className="fv-button" onClick={loadImpact}><Info size={15} />Inspect customer impact</button>}<Link to="/incidents" className="fv-text-button">Open incident response <ChevronRight size={13} /></Link></div>
+      {impact && <div className="fibre-impact"><h3>{impact.customer_count} customers · {impact.service_count} services</h3><p className="fv-note">Potential impact · restoration needs verification</p>{impact.services.map(service => <article key={service.service_id}><h4>{service.customer}<small>{service.service_type}</small></h4><p>{service.alternate_path_recorded ? 'Alternate path recorded' : 'No alternate path recorded'}</p></article>)}</div>}
+    </aside>}
+    {menu && <div className="logical-context" style={{ left: Math.max(8, menu.x), top: Math.max(70, menu.y) }}><strong>{menu.node.data.label}</strong><button onClick={() => { setTraceId(menu.node.id); setMenu(null); }}><Route size={14} />Trace dependencies</button><button onClick={() => toggleBranch(menu.node)}><Expand size={14} />Expand / collapse branch</button><Link to="/incidents">Open incident response</Link></div>}
+  </div>;
+}

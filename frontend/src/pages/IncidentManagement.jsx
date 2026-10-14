@@ -4,6 +4,9 @@ import {
   Clock, Zap, Wrench, Wifi, HelpCircle, ChevronRight
 } from 'lucide-react';
 import { incidentsApi } from '../api/client';
+import IncidentResponseDrawer from '../components/IncidentResponseDrawer';
+import { operationError } from '../api/operations';
+import RecordCorrectionModal from '../components/RecordCorrectionModal';
 
 // --- Category metadata: mirrors TICKET_CATEGORY_CODES on the backend ---
 // NOTE: Tailwind's content scanner only picks up complete, literal class name
@@ -15,7 +18,7 @@ const CATEGORIES = [
     activeClass: 'bg-cyan-900/40 border-cyan-500 text-cyan-400', iconClass: 'text-cyan-400' },
   { id: 'POWER', label: 'Power', code: 'PW', icon: Zap,
     activeClass: 'bg-orange-900/40 border-orange-500 text-orange-400', iconClass: 'text-orange-400' },
-  { id: 'TECHNICAL', label: 'Technical', code: 'TN', icon: Wrench,
+  { id: 'TRANSMISSION', label: 'Transmission', code: 'TN', icon: Wrench,
     activeClass: 'bg-purple-900/40 border-purple-500 text-purple-400', iconClass: 'text-purple-400' },
   { id: 'MAINTENANCE', label: 'Maintenance', code: 'MA', icon: Clock,
     activeClass: 'bg-blue-900/40 border-blue-500 text-blue-400', iconClass: 'text-blue-400' },
@@ -60,7 +63,9 @@ const EMPTY_RESOLUTION = {
   closed_by: '',
 };
 
-const IncidentManagement = () => {
+const IncidentManagement = ({ identity }) => {
+  const [correcting,setCorrecting]=useState(null);
+  const [responseIncident,setResponseIncident] = useState(null);
   const [incidents, setIncidents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -87,7 +92,7 @@ const IncidentManagement = () => {
       if (filters.search) params.search = filters.search;
       const response = await incidentsApi.getIncidents(params);
       setIncidents(response.data);
-    } catch (err) {
+    } catch {
       setError('Could not load incidents. Confirm the backend is running.');
     } finally {
       setLoading(false);
@@ -110,7 +115,7 @@ const IncidentManagement = () => {
       setIsCreateOpen(false);
       setNewIncident(EMPTY_INCIDENT);
       fetchIncidents();
-    } catch (err) {
+    } catch {
       alert('Could not save this incident. Check the required fields and try again.');
     } finally {
       setSubmitting(false);
@@ -128,15 +133,12 @@ const IncidentManagement = () => {
     setSubmitting(true);
     try {
       const payload = { ...resolution };
-      if (resolution.status === 'resolved' || resolution.status === 'closed') {
-        payload.resolved_at = new Date().toISOString();
-      }
       await incidentsApi.updateIncident(selectedIncident.incident_id, payload);
       setIsResolveOpen(false);
       setSelectedIncident(null);
       fetchIncidents();
-    } catch (err) {
-      alert('Could not update this incident. Please try again.');
+    } catch (error) {
+      alert(operationError(error));
     } finally {
       setSubmitting(false);
     }
@@ -180,7 +182,7 @@ const IncidentManagement = () => {
           <h1 className="text-2xl font-bold text-white flex items-center">
             <AlertTriangle className="mr-3 text-cyan-400" /> Incident Management
           </h1>
-          <p className="text-gray-400 text-sm mt-1">Log and track incidents — ticket numbers are generated automatically.</p>
+          <p className="text-gray-400 text-sm mt-1">Log and track incidents — Ticket IDs are generated automatically.</p>
         </div>
         <button
           onClick={() => setIsCreateOpen(true)}
@@ -212,7 +214,7 @@ const IncidentManagement = () => {
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500" />
           <input
             type="text"
-            placeholder="Search TT number or description..."
+            placeholder="Search Ticket ID or description..."
             value={searchInput}
             onChange={(e) => setSearchInput(e.target.value)}
             className="w-full bg-charcoal-800 border border-charcoal-700 rounded-lg pl-9 pr-3 py-2 text-sm text-white focus:outline-none focus:ring-2 focus:ring-cyan-500/50"
@@ -249,7 +251,7 @@ const IncidentManagement = () => {
             <table className="w-full text-left text-sm text-gray-300">
               <thead className="text-xs text-gray-400 bg-charcoal-800/50 uppercase border-b border-charcoal-700 sticky top-0 backdrop-blur-md">
                 <tr>
-                  <th className="px-6 py-4">TT Number</th>
+                  <th className="px-6 py-4">Ticket ID</th>
                   <th className="px-6 py-4">Description</th>
                   <th className="px-6 py-4">Severity</th>
                   <th className="px-6 py-4">Status</th>
@@ -280,6 +282,8 @@ const IncidentManagement = () => {
                         {incident.reported_at ? new Date(incident.reported_at).toLocaleDateString() : '-'}
                       </td>
                       <td className="px-6 py-4">
+                        {identity.roles.some(role=>['NOC.Admin','NOC.Operator'].includes(role))&&<button onClick={()=>setCorrecting(incident.incident_id)} className="text-cyan-300 text-xs mb-2 block">Edit details</button>}
+                        <button onClick={()=>setResponseIncident(incident.incident_id)} className="text-cyan-300 text-xs mb-2 block">Manage response</button>
                         {isOpen ? (
                           <button onClick={() => openResolve(incident)} className="text-lime-400 hover:text-lime-300 text-xs font-semibold flex items-center bg-lime-900/30 px-3 py-1.5 rounded">
                             <CheckCircle2 size={14} className="mr-1" /> Resolve
@@ -412,6 +416,8 @@ const IncidentManagement = () => {
       )}
 
       {/* --- RESOLVE / UPDATE MODAL --- */}
+      {responseIncident && <IncidentResponseDrawer key={responseIncident} incidentId={responseIncident} identity={identity} onClose={()=>setResponseIncident(null)} onChange={fetchIncidents}/>}
+      {correcting&&<RecordCorrectionModal key={correcting} kind="incident" id={correcting} onClose={()=>setCorrecting(null)} onSaved={fetchIncidents}/>}
       {isResolveOpen && selectedIncident && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50">
           <div className="bg-charcoal-900 border border-charcoal-700 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">

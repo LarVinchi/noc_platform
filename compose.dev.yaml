@@ -1,0 +1,105 @@
+name: noc-preview
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_USER: noc_preview
+      POSTGRES_PASSWORD: ${NOC_DB_PASSWORD:?Run dev.ps1 to initialize local configuration}
+      POSTGRES_DB: noc_preview
+    volumes:
+      - preview_db:/var/lib/postgresql/data
+      - ./db/init-scripts:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U noc_preview -d noc_preview']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  migrate:
+    image: noc-preview-backend:dev
+    build:
+      context: ./backend
+      target: development
+    environment: &backend_environment
+      POSTGRES_USER: noc_preview
+      POSTGRES_PASSWORD: ${NOC_DB_PASSWORD}
+      POSTGRES_SERVER: db
+      DOCUMENT_STORAGE_ROOT: /app/private_documents
+      ENVIRONMENT: development
+      AUTH_MODE: preview
+      MONITORING_INGEST_TOKEN: ${MONITORING_INGEST_TOKEN:-}
+      POSTGRES_PORT: '5432'
+      POSTGRES_DB: noc_preview
+    command: [sh, -c, 'alembic upgrade head && python -m app.preview_response_seed']
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    image: noc-preview-backend:dev
+    pull_policy: never
+    environment: *backend_environment
+    command: [uvicorn, app.main:app, --host, 0.0.0.0, --port, '8000', --reload]
+    ports:
+      - '127.0.0.1:18000:8000'
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests:ro
+      - preview_documents:/app/static
+      - preview_private_documents:/app/private_documents
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+  response-worker:
+    image: noc-preview-backend:dev
+    pull_policy: never
+    environment: *backend_environment
+    command: [python, -u, -m, app.response_worker]
+    restart: unless-stopped
+    volumes:
+      - ./backend/app:/app/app:ro
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    healthcheck:
+      test: [CMD, python, -c, "from app.core.db import engine; from sqlalchemy import text; c=engine.connect(); assert c.execute(text(\"SELECT updated_at > now() - interval '120 seconds' FROM worker_heartbeats WHERE worker_name='response-escalation'\")).scalar(); c.close()"]
+      interval: 30s
+      timeout: 10s
+      retries: 4
+      start_period: 30s
+
+  frontend:
+    image: noc-preview-frontend:dev
+    build:
+      context: ./frontend
+      target: development
+    environment:
+      VITE_API_BASE_URL: /api
+      API_PROXY_TARGET: http://api:8000
+      DEV_WATCH_POLLING: 'true'
+    ports:
+      - '127.0.0.1:5173:5173'
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/vite.config.js:/app/vite.config.js:ro
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: [CMD, node, -e, "fetch('http://localhost:5173').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  preview_db:
+  preview_documents:
+  preview_private_documents:

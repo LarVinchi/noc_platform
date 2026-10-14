@@ -1,14 +1,24 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { 
   List, Layout, AlertTriangle, Plus, Activity, 
   UploadCloud, CheckCircle, X, Download, UserPlus, ShieldCheck, GripVertical
 } from 'lucide-react';
-import { provisioningApi } from '../api/client';
+import { provisioningApi, openProtectedDocument } from '../api/client';
+import FTTHAssignmentModal from '../components/FTTHAssignmentModal';
+import FTTHImportModal from '../components/FTTHImportModal';
+import RecordCorrectionModal from '../components/RecordCorrectionModal';
 
-const FTTHProvisioning = () => {
+const FTTHProvisioning = ({identity}) => {
+  const [correcting,setCorrecting]=useState(null);
+  const canWrite=identity.roles.some(role=>['NOC.Admin','NOC.Operator'].includes(role));
   const [viewType, setViewType] = useState('list');
   const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [assignmentOrder, setAssignmentOrder] = useState(null);
+  const [isImportOpen, setIsImportOpen] = useState(false);
+  const [notice, setNotice] = useState('');
+  const [loadError, setLoadError] = useState('');
 
   // Modals State
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false);
@@ -23,17 +33,18 @@ const FTTHProvisioning = () => {
 
   const fetchOrders = async () => {
     try {
-      setLoading(true);
       const response = await provisioningApi.getOrders();
-      setOrders(response.data);
+      setOrders(response.data.filter(order => order.service_category === 'FTTH'));
+      setLoadError('');
     } catch (error) {
       console.error("Failed to fetch orders:", error);
+      setLoadError('Could not load FTTH orders. Check the API connection and refresh.');
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => { fetchOrders(); }, []);
+  useEffect(() => { fetchOrders(); const timer = setInterval(fetchOrders, 30000); return () => clearInterval(timer); }, []);
 
   // --- API Handlers ---
   const handleCreateOrder = async (e) => {
@@ -43,7 +54,7 @@ const FTTHProvisioning = () => {
       setIsCreateModalOpen(false);
       setNewOrder({ customer_name: '', service_address: '', isp: 'METROREACH', bandwidth: '100Mbps', fn_number: '', phone_number: '', email: ''});
       fetchOrders();
-    } catch (error) { alert("Error creating order."); }
+    } catch { alert("Error creating order."); }
   };
 
   const handleCompleteInstall = async (e) => {
@@ -61,14 +72,14 @@ const FTTHProvisioning = () => {
       setIsInstallModalOpen(false);
       setFlexscanDbm(''); setChecklistCompleted(false); setFiles({ photo_nap: null, photo_routing: null, photo_rosette: null, photo_flexscan: null });
       fetchOrders();
-    } catch (error) { alert("Error submitting installation. Please ensure all required fields are filled."); }
+    } catch { alert("Error submitting installation. Please ensure all required fields are filled."); }
   };
 
   const handleAcceptOrder = async (orderId) => {
     try {
       await provisioningApi.acceptInstallation(orderId);
       fetchOrders();
-    } catch (error) { alert("Failed to accept order."); }
+    } catch { alert("Failed to accept order."); }
   };
 
   // --- DRAG AND DROP LOGIC ---
@@ -90,13 +101,13 @@ const FTTHProvisioning = () => {
     } else if (targetStage === 'MONITORED') {
       handleAcceptOrder(order.order_id);
     } else if (targetStage === 'SCHEDULED' && order.status === 'REQUESTED') {
-      alert("Please assign a NAP to this order to transition it to Scheduled.");
+      setAssignmentOrder(order);
     } else {
       // Generic move (e.g., SCHEDULED to IN_PROGRESS)
       try {
         await provisioningApi.updateStatus(order.order_id, targetStage);
         fetchOrders();
-      } catch (error) {
+      } catch {
         alert("Failed to update status via drag and drop.");
       }
     }
@@ -119,13 +130,13 @@ const FTTHProvisioning = () => {
     { id: 'SCHEDULED', title: 'Scheduled (Designed)', color: 'border-blue-500' },
     { id: 'IN_PROGRESS', title: 'In Progress', color: 'border-orange-500' },
     { id: 'PENDING_ACCEPTANCE', title: 'Pending NOC Review', color: 'border-purple-500' },
-    { id: 'MONITORED', title: 'Active & Monitored', color: 'border-green-500' }
+    { id: 'MONITORED', title: 'Accepted / Ready for Monitoring', color: 'border-green-500' }
   ];
 
   return (
-    <div className="p-6 h-full flex flex-col space-y-6 overflow-hidden">
+    <div className="h-full min-h-[650px] flex flex-col space-y-6">
       {/* Header Area */}
-      <div className="flex justify-between items-center shrink-0">
+      <div className="flex flex-wrap gap-4 justify-between items-center shrink-0">
         <div>
           <h1 className="text-2xl font-bold text-white flex items-center">
             <Activity className="mr-3 text-cyan-400" /> FTTH Provisioning Pipeline
@@ -134,6 +145,7 @@ const FTTHProvisioning = () => {
         </div>
         
         <div className="flex items-center space-x-4">
+          <Link to="/ftth-operations" className="rounded-lg border border-cyan-800 px-3 py-2 text-sm text-cyan-300">Totals &amp; incidents</Link>
           <div className="flex bg-charcoal-900 p-1 rounded-lg border border-charcoal-700">
             <button onClick={() => setViewType('list')} className={`p-2 rounded flex items-center transition-colors ${viewType === 'list' ? 'bg-charcoal-700 text-cyan-400 shadow' : 'text-gray-500 hover:text-white'}`}>
               <List size={16} className="mr-2" /> Table
@@ -142,12 +154,24 @@ const FTTHProvisioning = () => {
               <Layout size={16} className="mr-2" /> Board
             </button>
           </div>
+          <button onClick={() => setIsImportOpen(true)} className="rounded-lg border border-cyan-600 px-4 py-2.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-900/30">Paste request</button>
           <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-cyan-900/50">
             <Plus size={16} className="mr-2" /> New FTTH Request
           </button>
         </div>
       </div>
 
+      {notice && <p role="status" className="mb-4 rounded-lg border border-cyan-800 bg-cyan-950/30 p-3 text-sm text-cyan-200">{notice}</p>}
+      {loadError && <p role="alert" className="mb-4 text-sm text-red-300">{loadError} <button onClick={fetchOrders} className="underline">Retry</button></p>}
+      {isImportOpen && <FTTHImportModal onClose={() => setIsImportOpen(false)} onImported={({ outcome, order }) => {
+        setIsImportOpen(false);
+        setNotice(`${outcome === 'created' ? 'Request logged' : 'Already logged — no duplicate created'}: ${order.fn_number} · ${order.work_order_id} · ${order.customer_name}`);
+        fetchOrders();
+      }} />}
+      {assignmentOrder && <FTTHAssignmentModal order={assignmentOrder} onClose={() => setAssignmentOrder(null)} onAssigned={() => {
+        setAssignmentOrder(null); setNotice('Infrastructure reserved and installation scheduled.'); fetchOrders();
+      }} />}
+      {correcting&&<RecordCorrectionModal key={correcting} kind="ftth_order" id={correcting} onClose={()=>setCorrecting(null)} onSaved={()=>{setNotice('Details corrected. Linked customer/service records are synchronized. Existing PDFs retain their original snapshot.');fetchOrders();}}/>}
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden flex flex-col">
         {loading ? (
@@ -168,21 +192,24 @@ const FTTHProvisioning = () => {
               <tbody>
                 {orders.map((order) => (
                   <tr key={order.order_id} className="border-b border-charcoal-800 hover:bg-charcoal-800/30 transition-colors">
-                    <td className="px-6 py-4 font-mono font-medium text-cyan-400">{order.service_id || 'Pending Gen'}</td>
-                    <td className="px-6 py-4 text-white font-medium">{order.customer_name}<div className="text-xs text-gray-500 font-normal mt-0.5">{order.bandwidth}</div></td>
+                    <td className="px-6 py-4 font-mono font-medium text-cyan-400">{order.service_id || 'Pending Gen'}<div className="mt-1 text-xs text-slate-400">{[order.fn_number, order.work_order_id].filter(Boolean).join(' · ')}</div></td>
+                    <td className="px-6 py-4 text-white font-medium">{order.customer_name}<div className="text-xs text-gray-500 font-normal mt-0.5">{order.bandwidth}{order.drop_tech_name && ` ? ${order.drop_tech_name}`}</div></td>
                     <td className="px-6 py-4">{order.isp}</td>
-                    <td className="px-6 py-4 font-mono text-xs">{order.nap_id ? `NAP Assigned` : <span className="text-red-400 flex items-center"><AlertTriangle size={12} className="mr-1"/> Needs Design</span>}</td>
+                    <td className="px-6 py-4 font-mono text-xs">{order.nap_id ? <><span>{order.nap_code || 'NAP assigned'} · Port {order.nap_port}</span><p className="text-slate-500 mt-1">{order.drop_cable_code}</p></> : <span className="text-amber-300 flex items-center"><AlertTriangle size={12} className="mr-1"/> Needs Design</span>}</td>
                     <td className="px-6 py-4"><span className={getStatusBadge(order.status)}>{order.status.replace(/_/g, ' ')}</span></td>
                     <td className="px-6 py-4 space-x-3 flex items-center">
+                      {canWrite&&<button onClick={()=>setCorrecting(order.order_id)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded">Edit details</button>}
+                      {order.status === 'REQUESTED' && <button onClick={() => setAssignmentOrder(order)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded">Assign & schedule</button>}
+                      {order.status === 'SCHEDULED' && <button onClick={async () => { try { await provisioningApi.updateStatus(order.order_id, 'IN_PROGRESS'); fetchOrders(); } catch { setLoadError('Could not start installation. Refresh and retry.'); } }} className="text-sky-300 text-xs underline">Start installation</button>}
                       {(order.status === 'SCHEDULED' || order.status === 'IN_PROGRESS') && (
                         <button onClick={() => { setSelectedOrder(order); setIsInstallModalOpen(true); }} className="text-cyan-400 hover:text-cyan-300 text-xs font-semibold flex items-center bg-cyan-900/30 px-3 py-1.5 rounded">
                           <UploadCloud size={14} className="mr-1" /> Finish Install
                         </button>
                       )}
                       {(order.status === 'PENDING_ACCEPTANCE' || order.status === 'MONITORED') && order.metrics?.acceptance_doc_url && (
-                        <a href={`http://localhost:8000${order.metrics.acceptance_doc_url}`} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-xs font-semibold flex items-center bg-purple-900/30 px-3 py-1.5 rounded">
+                        <button onClick={() => openProtectedDocument(order.metrics.acceptance_doc_url).catch(error => setNotice(error.message))} className="text-purple-400 hover:text-purple-300 text-xs font-semibold flex items-center bg-purple-900/30 px-3 py-1.5 rounded">
                           <Download size={14} className="mr-1" /> View PDF
-                        </a>
+                        </button>
                       )}
                       {order.status === 'PENDING_ACCEPTANCE' && (
                         <button onClick={() => handleAcceptOrder(order.order_id)} className="text-lime-400 hover:text-lime-300 text-xs font-semibold flex items-center bg-lime-900/30 px-3 py-1.5 rounded">
@@ -220,23 +247,29 @@ const FTTHProvisioning = () => {
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-mono text-xs text-cyan-400 flex items-center">
                           <GripVertical size={12} className="mr-1 text-gray-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          {order.service_id}
+                          {order.fn_number || order.service_id}
                         </span>
                         <span className="text-[10px] uppercase font-bold text-gray-500 bg-charcoal-900 px-2 py-0.5 rounded">{order.isp}</span>
                       </div>
                       <h4 className="text-white font-semibold text-sm">{order.customer_name}</h4>
+                      {order.work_order_id && <p className="text-xs text-slate-500 mt-1">Work order {order.work_order_id}</p>}
+                      {order.nap_id && <p className="text-xs text-slate-400 mt-1">{order.nap_code} · port {order.nap_port} · {order.drop_cable_code}</p>}
+                      {order.drop_tech_name && <p className="text-xs text-slate-400 mt-1">Installer: {order.drop_tech_name}</p>}
                       <p className="text-gray-400 text-xs mt-1 truncate">{order.service_address}</p>
                       
                       <div className="mt-4 flex flex-wrap gap-2">
+                        {canWrite&&<button onClick={()=>setCorrecting(order.order_id)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded w-full">Edit details</button>}
+                        {order.status === 'REQUESTED' && <button onClick={() => setAssignmentOrder(order)} className="text-cyan-300 text-xs border border-cyan-700 px-3 py-1.5 rounded w-full">Assign & schedule</button>}
+                        {order.status === 'SCHEDULED' && <button onClick={async () => { try { await provisioningApi.updateStatus(order.order_id, 'IN_PROGRESS'); fetchOrders(); } catch { setLoadError('Could not start installation. Refresh and retry.'); } }} className="text-sky-300 text-xs underline w-full">Start installation</button>}
                         {(order.status === 'SCHEDULED' || order.status === 'IN_PROGRESS') && (
                           <button onClick={() => { setSelectedOrder(order); setIsInstallModalOpen(true); }} className="text-cyan-400 hover:text-cyan-300 text-[11px] font-semibold flex items-center bg-cyan-900/30 px-2 py-1 rounded w-full justify-center">
                             <UploadCloud size={12} className="mr-1" /> Finish Install
                           </button>
                         )}
                         {(order.status === 'PENDING_ACCEPTANCE' || order.status === 'MONITORED') && order.metrics?.acceptance_doc_url && (
-                          <a href={`http://localhost:8000${order.metrics.acceptance_doc_url}`} target="_blank" rel="noreferrer" className="text-purple-400 hover:text-purple-300 text-[11px] font-semibold flex items-center bg-purple-900/30 px-2 py-1 rounded flex-1 justify-center">
+                          <button onClick={() => openProtectedDocument(order.metrics.acceptance_doc_url).catch(error => setNotice(error.message))} className="text-purple-400 hover:text-purple-300 text-[11px] font-semibold flex items-center bg-purple-900/30 px-2 py-1 rounded flex-1 justify-center">
                             <Download size={12} className="mr-1" /> PDF
-                          </a>
+                          </button>
                         )}
                         {order.status === 'PENDING_ACCEPTANCE' && (
                           <button onClick={() => handleAcceptOrder(order.order_id)} className="text-lime-400 hover:text-lime-300 text-[11px] font-semibold flex items-center bg-lime-900/30 px-2 py-1 rounded flex-1 justify-center">

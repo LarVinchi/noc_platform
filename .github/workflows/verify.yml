@@ -1,0 +1,77 @@
+name: Verify
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  backend-unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python: ['3.12', '3.14']
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: python -m pip install -r requirements-unit.txt
+      - run: python -m pytest tests/unit -q
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run build
+
+  preview-integration:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Initialize disposable preview credentials
+        run: openssl rand -hex 32 | sed 's/^/NOC_DB_PASSWORD=/' > .env
+      - name: Build and migrate a fresh preview database
+        run: docker compose -f compose.dev.yaml up --build -d --wait --wait-timeout 240
+      - name: Verify FTTH intake and existing inventory relationships
+        run: |
+          docker compose -f compose.dev.yaml exec -T -e NOC_ALLOW_INTEGRATION_TESTS=1 api python -m pytest tests/unit tests/integration -q
+          docker compose -f compose.dev.yaml exec -T api python -m pytest tests/test_db_logic.py -q
+      - name: Capture service logs on failure
+        if: failure()
+        run: docker compose -f compose.dev.yaml logs --tail 100
+      - name: Stop the disposable CI stack
+        if: always()
+        run: docker compose -f compose.dev.yaml down
+
+  production-images:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build the non-root runtime images
+        run: |
+          docker build --target production -t noc-backend:verify backend
+          docker build --target production -t noc-frontend:verify frontend
+      - name: Verify runtime contents and PDF dependencies
+        run: |
+          docker run --rm --entrypoint python noc-backend:verify -c "import os,importlib.util; from io import BytesIO; from xhtml2pdf import pisa; assert os.getuid()==10001; assert importlib.util.find_spec('pytest') is None; result=BytesIO(); assert not pisa.CreatePDF('<p>NOC runtime check</p>',dest=result).err; assert result.getvalue().startswith(b'%PDF')"
+          docker run --rm --add-host api:127.0.0.1 --entrypoint nginx noc-frontend:verify -t
+
+# These development gates do not constitute production readiness or SSO validation.

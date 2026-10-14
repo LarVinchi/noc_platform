@@ -25,7 +25,7 @@ from app.core.db import Base
 # Example:
 #   FIBER       -> OF
 #   POWER       -> PW
-#   TECHNICAL   -> TN
+#   TRANSMISSION   -> TN
 #   MAINTENANCE -> MA
 #   OTHER       -> OT
 #
@@ -40,7 +40,7 @@ from app.core.db import Base
 TICKET_CATEGORY_CODES = {
     "FIBER": "OF",
     "POWER": "PW",
-    "TECHNICAL": "TN",
+    "TRANSMISSION": "TN",
     "MAINTENANCE": "MA",
     "OTHER": "OT",
 }
@@ -146,6 +146,13 @@ def normalize_incident_type(value: str | None) -> str:
 
 class Incident(Base):
     __tablename__ = "incidents"
+    assigned_engineer_id = Column(UUID(as_uuid=True), ForeignKey("engineers.engineer_id"))
+    response_policy_id = Column(UUID(as_uuid=True), ForeignKey("response_policies.policy_id"))
+    acknowledged_at = Column(DateTime(timezone=True))
+    acknowledged_by = Column(String(100))
+    ack_deadline_at = Column(DateTime(timezone=True))
+    restore_deadline_at = Column(DateTime(timezone=True))
+    escalation_level = Column(Integer, nullable=False, default=0)
 
     # ========================================================
     # TABLE-LEVEL CONSTRAINTS
@@ -238,7 +245,7 @@ class Incident(Base):
     # Valid values:
     #   FIBER
     #   POWER
-    #   TECHNICAL
+    #   TRANSMISSION
     #   MAINTENANCE
     #   OTHER
     ticket_category = Column(

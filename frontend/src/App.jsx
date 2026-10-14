@@ -1,49 +1,56 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import NocAppShell from './components/NocAppShell';
 import CrmServices from './pages/CrmServices';
-import TopologyMap from './pages/TopologyMap';
+import NetworkTopology from './pages/NetworkTopology';
 import FTTHProvisioning from './pages/FTTHProvisioning';
 import IncidentManagement from './pages/IncidentManagement';
+import OperationsDashboard from './pages/OperationsDashboard';
 import NOCLoginScreen from './pages/NOCLoginScreen'; // <-- IMPORT NEW SPLIT-SCREEN LOGIN
-
-const DashboardHome = () => (
-  <div className="grid grid-cols-3 gap-6">
-    <div className="bg-charcoal-800 p-6 rounded-xl border border-charcoal-700">
-      <h3 className="text-gray-400 text-sm mb-2">Active Services</h3>
-      <p className="text-3xl font-bold text-white">1,204</p>
-    </div>
-    <div className="bg-charcoal-800 p-6 rounded-xl border border-charcoal-700">
-      <h3 className="text-gray-400 text-sm mb-2">Open Incidents</h3>
-      <p className="text-3xl font-bold text-cyan-400">3</p>
-    </div>
-    <div className="bg-charcoal-800 p-6 rounded-xl border border-charcoal-700">
-      <h3 className="text-gray-400 text-sm mb-2">Network Health</h3>
-      <p className="text-3xl font-bold text-lime-400">99.9%</p>
-    </div>
-  </div>
-);
+import { initializeAuth, accessToken, signIn, signOut } from './api/auth';
+import { setTokenProvider } from './api/client';
+import AuditHistory from './pages/AuditHistory';
+import Monitoring from './pages/Monitoring';
+import ResponseCenter from './pages/ResponseCenter';
+import Documents from './pages/Documents';
+import FtthOperations from './pages/FtthOperations';
+import MailTriage from './pages/MailTriage';
+import Knowledge from './pages/Knowledge';
 
 function App() {
   // Authentication State
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [identity, setIdentity] = useState(null);
+  const [configuration, setConfiguration] = useState(null);
+  const [error, setError] = useState('');
+  useEffect(() => {
+    initializeAuth().then(config => {
+      setConfiguration(config); setTokenProvider(accessToken);
+    }).catch(() => setError('Unable to initialize access. Check that the API is running and identity configuration is valid.'));
+  }, []);
 
   // 1. If not authenticated, show the interactive NOC Login Screen.
   // The Login Screen handles the animation internally and calls onLoginSuccess when done.
-  if (!isAuthenticated) {
-    return <NOCLoginScreen onLoginSuccess={() => setIsAuthenticated(true)} />;
+  if (!identity) {
+    return <NOCLoginScreen configuration={configuration} error={error} onLogin={async () => setIdentity(await signIn())} />;
   }
 
   // 2. Authentication complete! Load the full NOC OS Routing Shell
   return (
     <BrowserRouter>
-      <NocAppShell>
+      <NocAppShell identity={identity} onLogout={async () => { await signOut(); setIdentity(null); }}>
         <Routes>
-          <Route path="/" element={<DashboardHome />} />
-          <Route path="/crm" element={<CrmServices />} />
-          <Route path="/topology" element={<TopologyMap />} />
-          <Route path="/provisioning" element={<FTTHProvisioning />} />
-          <Route path="/incidents" element={<IncidentManagement />} />
+          <Route path="/" element={<OperationsDashboard />} />
+          <Route path="/crm" element={<CrmServices identity={identity}/>} />
+          <Route path="/topology" element={<NetworkTopology />} />
+          <Route path="/provisioning" element={<FTTHProvisioning identity={identity}/>} />
+          <Route path="/incidents" element={<IncidentManagement identity={identity} />} />
+          <Route path="/response" element={<ResponseCenter identity={identity} />} />
+          <Route path="/documents" element={<Documents identity={identity} />} />
+          <Route path="/ftth-operations" element={<FtthOperations identity={identity} />} />
+          <Route path="/mail" element={<MailTriage identity={identity} />} />
+          <Route path="/knowledge" element={<Knowledge />} />
+          <Route path="/audit" element={<AuditHistory />} />
+          <Route path="/monitoring" element={<Monitoring identity={identity} />} />
         </Routes>
       </NocAppShell>
     </BrowserRouter>

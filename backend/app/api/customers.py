@@ -16,7 +16,4 @@ def get_customers(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)
     # This uses SQLAlchemy to run: SELECT * FROM customers OFFSET skip LIMIT limit;
     customers = db.query(Customer).offset(skip).limit(limit).all()
     
-    if not customers:
-        raise HTTPException(status_code=404, detail="No customers found")
-    
     return customers

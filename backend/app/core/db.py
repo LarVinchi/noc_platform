@@ -1,4 +1,6 @@
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event, text
+from sqlalchemy.orm import Session
+from app.core.security import actor_context
 from sqlalchemy.orm import sessionmaker, declarative_base
 from app.core.config import settings
 
@@ -18,6 +20,16 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 # 3. Create a Base class
 # All of our future database models will inherit from this Base.
 Base = declarative_base()
+
+
+@event.listens_for(Session, "before_flush")
+def set_audit_actor(session, flush_context, instances):
+    actor = actor_context.get()
+    session.execute(text("SELECT set_config('noc.actor', :actor, true), "
+                         "set_config('noc.verified', :verified, true), "
+                         "set_config('noc.request_id', :request_id, true)"),
+                    {"actor": actor["id"], "verified": str(actor["verified"]).lower(),
+                     "request_id": actor["request_id"]})
 
 # 4. Dependency Injection for FastAPI
 # We will use this function in our API routes to grab a database connection, 

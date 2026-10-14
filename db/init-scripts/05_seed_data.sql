@@ -95,5 +95,8 @@ WHERE s.service_type = 'FTTH' AND dc.drop_cable_code = 'DROP-GT-001' LIMIT 1;
 -- 10. Log a Sample Incident (Testing the incident mapping)
 -- Let's pretend the North-Zone-Backbone cable was cut
 INSERT INTO incidents (incident_type, description, status, cable_id)
-SELECT 'fiber_cut', 'Excavator cut the CABLE-N1 near Yaba', 'open', cable_id
+SELECT 'Fiber Incident', 'Excavator cut the CABLE-N1 near Yaba', 'open', cable_id
 FROM fiber_cables WHERE cable_name = 'CABLE-N1' LIMIT 1;
+
+-- The impact view is created before seeds; refresh after inserting sample data.
+REFRESH MATERIALIZED VIEW mv_customer_service_impact;

@@ -1,84 +1,20 @@
-import React, { useState, useEffect } from 'react';
+import {useEffect,useState} from 'react';
+import ServiceProvisionForm from '../components/ServiceProvisionForm';
+import RecordCorrectionModal from '../components/RecordCorrectionModal';
 import apiClient from '../api/client';
-import { Activity, ServerOff } from 'lucide-react';
+import {operationError} from '../api/operations';
+import '../styles/response.css';
+import '../styles/corrections.css';
 
-const CrmServices = () => {
-  const [customers, setCustomers] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    // Fetch data from your FastAPI backend
-    apiClient.get('/customers/')
-      .then((response) => {
-        setCustomers(response.data);
-        setLoading(false);
-      })
-      .catch((err) => {
-        console.error("API Error:", err);
-        setError("Failed to connect to the backend API.");
-        setLoading(false);
-      });
-  }, []);
-
-  if (loading) {
-    return <div className="text-cyan-400 animate-pulse flex items-center gap-2"><Activity size={20} /> Loading network data...</div>;
-  }
-
-  if (error) {
-    return <div className="text-red-400 flex items-center gap-2 bg-red-400/10 p-4 rounded-lg border border-red-400/20"><ServerOff size={20} /> {error}</div>;
-  }
-
-  return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-semibold text-white">Customer Services</h2>
-        <button className="bg-cyan-500 hover:bg-cyan-400 text-charcoal-900 font-bold py-2 px-4 rounded transition-colors shadow-cyan-glow">
-          + Provision Service
-        </button>
-      </div>
-
-      <div className="bg-charcoal-800 rounded-xl border border-charcoal-700 overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-charcoal-900/50 text-gray-400 text-sm uppercase tracking-wider border-b border-charcoal-700">
-              <th className="p-4 font-medium">Customer Name</th>
-              <th className="p-4 font-medium">Type</th>
-              <th className="p-4 font-medium">Service ID</th>
-              <th className="p-4 font-medium">Address</th>
-              <th className="p-4 font-medium">Status</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-charcoal-700 text-gray-200">
-            {customers.map((cust) => (
-              <tr key={cust.customer_id} className="hover:bg-charcoal-700/50 transition-colors">
-                <td className="p-4 font-medium text-cyan-400">{cust.customer_name}</td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 text-xs rounded-full font-medium ${
-                    cust.customer_type === 'ISP' ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'bg-blue-500/20 text-blue-400 border border-blue-500/30'
-                  }`}>
-                    {cust.customer_type}
-                  </span>
-                </td>
-                <td className="p-4 font-mono text-sm text-gray-400">{cust.service_id_code}</td>
-                <td className="p-4 text-sm">{cust.address}</td>
-                <td className="p-4">
-                  <span className="flex items-center gap-2 text-sm text-lime-400">
-                    <span className="w-2 h-2 rounded-full bg-lime-500 shadow-lime-glow"></span> Active
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {customers.length === 0 && (
-              <tr>
-                <td colSpan="5" className="p-8 text-center text-gray-500">No customers found in database.</td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-};
-
-export default CrmServices;
+export default function CrmServices({identity}) {
+ const [showProvision,setShowProvision]=useState(false),[revision,setRevision]=useState(0),[customers,setCustomers]=useState([]),[services,setServices]=useState(null),[error,setError]=useState(''),[correcting,setCorrecting]=useState(null),[customerFilter,setCustomerFilter]=useState(''),[offset,setOffset]=useState(0),[customerOffset,setCustomerOffset]=useState(0),[notice,setNotice]=useState('');
+ const canWrite=identity.roles.some(role=>['NOC.Admin','NOC.Operator'].includes(role));
+ useEffect(()=>{const controller=new AbortController();Promise.all([apiClient.get('/customers/',{params:{skip:customerOffset,limit:100},signal:controller.signal}),apiClient.get('/services/',{params:{customer_id:customerFilter||undefined,offset,limit:50},signal:controller.signal})]).then(([a,b])=>{if(controller.signal.aborted)return;setCustomers(a.data);setServices(b.data);setError('');}).catch(error=>{if(error.code!=='ERR_CANCELED')setError(operationError(error));});return()=>controller.abort();},[revision,customerFilter,offset,customerOffset]);
+ function refreshed(){setRevision(value=>value+1);setNotice('Details saved. Linked FTTH records are synchronized; existing documents retain their original contents.');}
+ return <div className="response-centre"><div className="response-page-heading"><div><span className="eyebrow">CUSTOMERS / SERVICES / RECORD CORRECTIONS</span><h1>Customers & services</h1><p>Customer records and provisioned service details. Record status does not verify connectivity.</p></div><div className="response-inline"><button className="response-button" onClick={()=>setRevision(value=>value+1)}>Refresh</button>{canWrite&&<button className="response-button primary" onClick={()=>setShowProvision(true)}>Provision Service</button>}</div></div>{error&&<p role="alert" className="response-error">{error}</p>}{notice&&<p role="status" className="response-preview">{notice}</p>}
+  <section className="response-panel"><header><h2>Customer records</h2><small>Up to 100 records per page</small></header><div className="response-table-scroll"><table><thead><tr>{['Customer','Type','Reference','Address','Actions'].map(label=><th key={label}>{label}</th>)}</tr></thead><tbody>{customers.map(customer=><tr key={customer.customer_id}><td>{customer.customer_name}<small>{customer.email||customer.phone||'No contact recorded'}</small></td><td>{customer.customer_type}</td><td>{customer.service_id_code}</td><td>{customer.address}</td><td><div className="correction-inline-actions">{canWrite&&<button className="response-button" onClick={()=>setCorrecting({kind:'customer',id:customer.customer_id})}>Edit customer</button>}<button className="response-button" onClick={()=>{setCustomerFilter(customer.customer_id);setOffset(0);}}>Show services</button></div></td></tr>)}{!customers.length&&<tr><td colSpan={5}>No customer records on this page.</td></tr>}</tbody></table></div><div className="response-inline" style={{padding:15}}><button className="response-button" disabled={!customerOffset} onClick={()=>setCustomerOffset(value=>Math.max(0,value-100))}>Previous customers</button><button className="response-button" disabled={customers.length<100} onClick={()=>setCustomerOffset(value=>value+100)}>Next customers</button></div></section>
+  <section className="response-panel correction-services"><header><div><h2>Provisioned services</h2><p>Includes enterprise and accepted FTTH services.</p></div><select aria-label="Filter services by customer" value={customerFilter} onChange={event=>{setCustomerFilter(event.target.value);setOffset(0);}}><option value="">All customers</option>{customers.map(customer=><option key={customer.customer_id} value={customer.customer_id}>{customer.customer_name}</option>)}</select></header><div className="response-table-scroll"><table><thead><tr>{['Customer','Service','Bandwidth','Record status','FTTH references','Actions'].map(label=><th key={label}>{label}</th>)}</tr></thead><tbody>{services?.items.map(service=><tr key={service.service_id}><td>{service.customer_name}</td><td>{service.service_type}<small>{service.service_id}</small></td><td>{service.bandwidth_mbps==null?'Not applicable':`${service.bandwidth_mbps} Mbps`}</td><td>{service.status}</td><td>{service.ftth_orders.map(order=>order.fn_number||'Unnumbered order').join(', ')||'—'}</td><td>{canWrite&&<div className="correction-inline-actions"><button className="response-button" onClick={()=>setCorrecting({kind:'service',id:service.service_id})}>Edit service</button><button className="response-button" onClick={()=>setCorrecting({kind:'customer',id:service.customer_id})}>Edit customer</button></div>}</td></tr>)}{services&&!services.items.length&&<tr><td colSpan={6}>No services match this customer.</td></tr>}</tbody></table></div><div className="response-inline" style={{padding:15}}><button className="response-button" disabled={!offset} onClick={()=>setOffset(value=>Math.max(0,value-50))}>Previous services</button><small>{services?`${services.total} services`:'Loading services…'}</small><button className="response-button" disabled={!services||offset+50>=services.total} onClick={()=>setOffset(value=>value+50)}>Next services</button></div></section>
+  {showProvision&&<ServiceProvisionForm customers={customers} onClose={()=>setShowProvision(false)} onProvisioned={()=>{setShowProvision(false);refreshed();}}/>}
+  {correcting&&<RecordCorrectionModal key={`${correcting.kind}:${correcting.id}`} {...correcting} onClose={()=>setCorrecting(null)} onSaved={refreshed}/>}
+ </div>;
+}

@@ -1,0 +1,97 @@
+# Deployment reference, not an approved production release. See docs/container-builds.md.
+# Pull reviewed commit/digest-tagged images; never build from a mutable checkout on the server.
+name: noc-production
+x-backend: &backend
+  image: ${NOC_BACKEND_IMAGE:?Set a reviewed backend image tag or digest}
+  environment: &environment
+    ENVIRONMENT: production
+    AUTH_MODE: entra
+    POSTGRES_SERVER: db
+    POSTGRES_PORT: '5432'
+    POSTGRES_DB: noc_platform
+    POSTGRES_USER: noc_platform
+    POSTGRES_PASSWORD: ${NOC_PRODUCTION_DB_PASSWORD:?Set a production database credential}
+    DOCUMENT_STORAGE_ROOT: /app/private_documents
+    ENTRA_TENANT_ID: ${ENTRA_TENANT_ID:?Set the Entra tenant ID}
+    ENTRA_API_CLIENT_ID: ${ENTRA_API_CLIENT_ID:?Set the API registration ID}
+    ENTRA_SPA_CLIENT_ID: ${ENTRA_SPA_CLIENT_ID:?Set the browser registration ID}
+    ENTRA_SCOPE: ${ENTRA_SCOPE:-access_as_user}
+    MONITORING_INGEST_TOKEN: ${MONITORING_INGEST_TOKEN:-}
+  volumes:
+    - documents:/app/static
+    - private_documents:/app/private_documents
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: [/tmp]
+  logging: &logging
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: noc_platform
+      POSTGRES_USER: noc_platform
+      POSTGRES_PASSWORD: ${NOC_PRODUCTION_DB_PASSWORD:?Set a production database credential}
+    volumes:
+      - database:/var/lib/postgresql/data
+      # Schema baseline only. Preview seed 05_seed_data.sql is deliberately excluded.
+      - ./db/init-scripts/01_infrastructure.sql:/docker-entrypoint-initdb.d/01_infrastructure.sql:ro
+      - ./db/init-scripts/02_customers_services.sql:/docker-entrypoint-initdb.d/02_customers_services.sql:ro
+      - ./db/init-scripts/03_incidents_tickets.sql:/docker-entrypoint-initdb.d/03_incidents_tickets.sql:ro
+      - ./db/init-scripts/04_optimized_view.sql:/docker-entrypoint-initdb.d/04_optimized_view.sql:ro
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U noc_platform -d noc_platform']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    logging: *logging
+  migrate:
+    <<: *backend
+    command: [alembic, upgrade, head]
+    depends_on:
+      db: {condition: service_healthy}
+  api:
+    <<: *backend
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+  response-worker:
+    <<: *backend
+    command: [python, -u, -m, app.response_worker]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "from app.core.db import engine; from sqlalchemy import text; c=engine.connect(); assert c.execute(text(\"SELECT updated_at > now() - interval '120 seconds' FROM worker_heartbeats WHERE worker_name='response-escalation'\")).scalar(); c.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 60s
+  frontend:
+    image: ${NOC_FRONTEND_IMAGE:?Set a reviewed frontend image tag or digest}
+    ports: ['127.0.0.1:8080:8080']
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://localhost:8080/health/live']
+      interval: 15s
+      timeout: 5s
+      retries: 5
+    logging: *logging
+volumes:
+  database:
+  documents:
+  private_documents:

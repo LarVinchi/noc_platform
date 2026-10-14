@@ -17,7 +17,7 @@ from app.models.incidents import Incident, TicketSequence, normalize_incident_ty
 PREFIX_TO_CATEGORY = {
     "OF": "FIBER",
     "PW": "POWER",
-    "TN": "TECHNICAL",
+    "TN": "TRANSMISSION",
     "MA": "MAINTENANCE",
     "OT": "OTHER",
     "TM": "OTHER",
