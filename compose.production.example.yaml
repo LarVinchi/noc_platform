@@ -37,10 +37,10 @@ services:
     volumes:
       - database:/var/lib/postgresql/data
       # Schema baseline only. Preview seed 05_seed_data.sql is deliberately excluded.
-      - ./db/init-scripts/01_infrastructure.sql:/docker-entrypoint-initdb.d/01_infrastructure.sql:ro
-      - ./db/init-scripts/02_customers_services.sql:/docker-entrypoint-initdb.d/02_customers_services.sql:ro
-      - ./db/init-scripts/03_incidents_tickets.sql:/docker-entrypoint-initdb.d/03_incidents_tickets.sql:ro
-      - ./db/init-scripts/04_optimized_view.sql:/docker-entrypoint-initdb.d/04_optimized_view.sql:ro
+      - ./db/init-scripts/01_infrastructure.sql:/docker-entrypoint-initdb.d/01_infrastructure.sql:ro,z
+      - ./db/init-scripts/02_customers_services.sql:/docker-entrypoint-initdb.d/02_customers_services.sql:ro,z
+      - ./db/init-scripts/03_incidents_tickets.sql:/docker-entrypoint-initdb.d/03_incidents_tickets.sql:ro,z
+      - ./db/init-scripts/04_optimized_view.sql:/docker-entrypoint-initdb.d/04_optimized_view.sql:ro,z
     restart: unless-stopped
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U noc_platform -d noc_platform']
@@ -86,7 +86,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     healthcheck:
-      test: [CMD, wget, -q, -O, /dev/null, 'http://localhost:8080/health/live']
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/health/live']
       interval: 15s
       timeout: 5s
       retries: 5

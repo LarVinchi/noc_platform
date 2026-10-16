@@ -1,0 +1,25 @@
+# Add to compose.review.yaml for a password-protected tunnel upstream.
+# The gateway is loopback-only. Funnel supplies public HTTPS.
+services:
+  public-gateway:
+    image: noc-review-frontend:local
+    ports:
+      - '127.0.0.1:18080:8080'
+    volumes:
+      - ./deploy/review-gateway.nginx.conf:/etc/nginx/nginx.conf:ro,z
+      - ./.review-access/htpasswd:/etc/nginx/review.htpasswd:ro,z
+    depends_on:
+      frontend: {condition: service_healthy}
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8081/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging:
+      driver: json-file
+      options: {max-size: 10m, max-file: '3'}
