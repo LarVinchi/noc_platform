@@ -4,6 +4,12 @@ React operational interface, FastAPI backend and PostgreSQL/PostGIS inventory.
 See [the production roadmap](docs/production-roadmap.md) for requirements,
 architecture decisions, milestones, external dependencies and release criteria.
 
+**Energy operations** now provides three-site daily reports from an administrator-
+imported RawData tracker, Excel/light/dark email chart exports, traceable source
+records and an isolated local collector trial. See [the energy guide](docs/energy-operations.md).
+Anker OneDrive synchronization, live power detection and operational collector
+cutover are not connected in this milestone.
+
 ## Current development work
 
 Branch: `feat/noc-production-foundation`.
