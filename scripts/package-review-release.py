@@ -45,8 +45,13 @@ def main():
         path = args.output / (name + '.tar.gz')
         # CI creates these from the same image IDs that passed its runtime checks.
         assert path.is_file(), f'Missing image archive: {path.name}'
+        with tarfile.open(path, 'r:gz') as archive:
+            manifest = json.load(archive.extractfile('manifest.json'))
+            assert len(manifest) == 1 and image in manifest[0]['RepoTags']
+            config_digest = hashlib.sha256(archive.extractfile(manifest[0]['Config']).read()).hexdigest()
         result['artifacts'][name] = {'file': path.name, 'size': path.stat().st_size,
-                                     'sha256': digest(path), 'image': image, 'image_id': data['Id']}
+                                     'sha256': digest(path), 'image': image, 'image_id': data['Id'],
+                                     'image_config_sha256': config_digest}
     path = args.output / 'runtime.tar.gz'
     root = Path(__file__).resolve().parents[1]
     with tarfile.open(path, 'w:gz') as archive:

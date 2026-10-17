@@ -104,6 +104,7 @@ def test_deployment_failure_restarts_previous_images_without_restoring_database(
                 pass
     monkeypatch.setattr(deployer, 'capture', capture)
     monkeypatch.setattr(deployer, 'run', run)
+    monkeypatch.setattr(deployer, 'verify_loaded_image', lambda *args: None)
     with pytest.raises(subprocess.CalledProcessError):
         deployer.deploy(root, state, release, value)
     rollback = [args for args in calls if 'up' in args and any(arg.endswith('previous.json') for arg in args)]
@@ -113,3 +114,28 @@ def test_deployment_failure_restarts_previous_images_without_restoring_database(
     if failure != 'stop':
         assert list((access / 'backups').glob('*/backup-complete'))
         assert any('pg_restore' in args and '-i' in args for args in calls)
+
+
+def test_loaded_image_identity_is_portable_across_docker_stores(tmp_path):
+    import hashlib
+    import json
+    config = {'config': {'Labels': {'org.opencontainers.image.revision': SHA}, 'User': '10001'},
+              'rootfs': {'diff_ids': ['sha256:' + 'd'*64]}, 'os': 'linux', 'architecture': 'amd64'}
+    raw = json.dumps(config).encode()
+    checksum = hashlib.sha256(raw).hexdigest()
+    item = {'image': 'noc-release-backend:' + SHA, 'image_id': 'sha256:' + checksum}
+    archive = tmp_path / 'image.tar.gz'
+    with tarfile.open(archive, 'w:gz') as stream:
+        for name, content in [('manifest.json', json.dumps([{'Config': 'config.json', 'RepoTags': [item['image']]}]).encode()), ('config.json', raw)]:
+            member = tarfile.TarInfo(name)
+            member.size = len(content)
+            stream.addfile(member, io.BytesIO(content))
+    image = {'Id': 'sha256:' + 'e'*64, 'Config': config['config'], 'RootFS': {'Layers': config['rootfs']['diff_ids']},
+             'Os': 'linux', 'Architecture': 'amd64'}
+    deployer.verify_loaded_image(archive, item, image, SHA)
+    # Future CI runners can also use containerd, with a separate config digest.
+    item.update(image_id='sha256:' + 'f'*64, image_config_sha256=checksum)
+    deployer.verify_loaded_image(archive, item, image, SHA)
+    image['RootFS']['Layers'] = ['sha256:' + '0'*64]
+    with pytest.raises(ValueError, match='does not match'):
+        deployer.verify_loaded_image(archive, item, image, SHA)
