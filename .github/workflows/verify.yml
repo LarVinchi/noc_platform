@@ -67,11 +67,56 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build the non-root runtime images
         run: |
-          docker build --target production -t noc-backend:verify backend
-          docker build --target production -t noc-frontend:verify frontend
+          docker build --target production --label org.opencontainers.image.revision="$GITHUB_SHA" -t noc-backend:verify backend
+          docker build --target production --label org.opencontainers.image.revision="$GITHUB_SHA" -t noc-frontend:verify frontend
       - name: Verify runtime contents and PDF dependencies
         run: |
           docker run --rm --entrypoint python noc-backend:verify -c "import os,importlib.util; from io import BytesIO; from xhtml2pdf import pisa; assert os.getuid()==10001; assert importlib.util.find_spec('pytest') is None; result=BytesIO(); assert not pisa.CreatePDF('<p>NOC runtime check</p>',dest=result).err; assert result.getvalue().startswith(b'%PDF')"
           docker run --rm --add-host api:127.0.0.1 --entrypoint nginx noc-frontend:verify -t
+      - name: Package the tested main-branch images
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+          mkdir -p release
+          docker tag noc-backend:verify "noc-release-backend:$GITHUB_SHA"
+          docker tag noc-frontend:verify "noc-release-frontend:$GITHUB_SHA"
+          docker save "noc-release-backend:$GITHUB_SHA" | gzip > release/backend.tar.gz
+          docker save "noc-release-frontend:$GITHUB_SHA" | gzip > release/frontend.tar.gz
+          python3 scripts/package-review-release.py --sha "$GITHUB_SHA" --verify-run-id "$GITHUB_RUN_ID" --repository "$GITHUB_REPOSITORY" --output release
+      - uses: actions/upload-artifact@v4
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        with:
+          name: review-release-${{ github.sha }}
+          path: release/
+          retention-days: 7
+          compression-level: 0
+
+  deployment-tools:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install pytest==9.0.2
+      - run: python -m pytest scripts/tests -q
+      - run: bash -n scripts/setup-energy-windows.sh scripts/receive-energy-review-workbook.sh scripts/receive-energy-workbook.sh scripts/install-review-deployer.sh
+
+  required-checks:
+    name: Required checks
+    if: always()
+    needs: [backend-unit, frontend-build, preview-integration, production-images, deployment-tools]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require every verification job to succeed
+        env:
+          JOB_RESULTS: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import json, os
+          jobs = json.loads(os.environ['JOB_RESULTS'])
+          failed = [name for name, value in jobs.items() if value['result'] != 'success']
+          assert not failed, 'Failed or skipped checks: ' + ', '.join(failed)
+          print('All required checks passed')
+          PY
 
 # These development gates do not constitute production readiness or SSO validation.

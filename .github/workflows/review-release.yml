@@ -1,0 +1,76 @@
+name: Publish tested review release
+
+on:
+  workflow_run:
+    workflows: [Verify]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: review-release
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_branch == 'main' &&
+      github.event.workflow_run.head_repository.full_name == github.repository
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: review-release-${{ github.event.workflow_run.head_sha }}
+          path: release
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+      - name: Verify artifact provenance and checksums
+        env:
+          EXPECTED_SHA: ${{ github.event.workflow_run.head_sha }}
+          VERIFY_RUN_ID: ${{ github.event.workflow_run.id }}
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os, pathlib, re
+          root = pathlib.Path('release')
+          value = json.loads((root / 'release.json').read_text())
+          assert re.fullmatch('[0-9a-f]{40}', os.environ['EXPECTED_SHA'])
+          assert value['sha'] == os.environ['EXPECTED_SHA']
+          assert value['repository'] == os.environ['GITHUB_REPOSITORY']
+          assert value['verify_run_id'] == int(os.environ['VERIFY_RUN_ID'])
+          for name in ['backend', 'frontend', 'runtime']:
+              item = value['artifacts'][name]
+              assert item['file'] == name + '.tar.gz'
+              path = root / item['file']
+              assert path.stat().st_size == item['size']
+              digest = hashlib.sha256()
+              with path.open('rb') as stream:
+                  for block in iter(lambda: stream.read(1024*1024), b''):
+                      digest.update(block)
+              assert digest.hexdigest() == item['sha256']
+          value['release_run_id'] = int(os.environ['GITHUB_RUN_ID'])
+          (root / 'release.json').write_text(json.dumps(value, indent=2) + '\n')
+          PY
+      - name: Publish immutable commit release for the Linux deployment service
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          tag="review-$RELEASE_SHA"
+          if gh release view "$tag" >/dev/null 2>&1; then
+            if [ "$(gh release view "$tag" --json isDraft --jq '.isDraft')" = 'false' ]; then
+              echo "Release already exists; preserving its tested assets."
+              exit 0
+            fi
+            gh release upload "$tag" --clobber release/release.json release/backend.tar.gz release/frontend.tar.gz release/runtime.tar.gz
+          else
+            gh release create "$tag" --target "$RELEASE_SHA" --draft --prerelease --title "Review $RELEASE_SHA" --notes "Exact runtime images from the successful main-branch Verify run. Linux checks provenance and hashes before deployment." release/release.json release/backend.tar.gz release/frontend.tar.gz release/runtime.tar.gz
+          fi
+          gh release edit "$tag" --draft=false

@@ -214,3 +214,7 @@ See [the Knowledge workspace guide](docs/knowledge-workspace.md).
 **Mail triage** now includes a private manual preview queue, rule explanations,
 priority hints and review links to existing incidents/FTTH cases. It does not
 monitor a live inbox. See [the preview guide](docs/mail-preview.md).
+
+The stakeholder server can receive CI-verified releases after PRs merge into
+`main`. See [review CI/CD](docs/review-ci-cd.md) for the developer workflow,
+server timer, backup/rollback behavior and production deployment requirements.
