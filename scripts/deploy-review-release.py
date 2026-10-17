@@ -54,6 +54,28 @@ def validate_manifest(value, sha):
             raise ValueError('Invalid artifact digest')
         if name != 'runtime' and (item['image'] != f'noc-release-{name}:{sha}' or not re.fullmatch('sha256:[0-9a-f]{64}', item['image_id'])):
             raise ValueError('Unexpected image identity')
+        if name != 'runtime' and 'image_config_sha256' in item and not re.fullmatch('[0-9a-f]{64}', item['image_config_sha256']):
+            raise ValueError('Invalid image configuration digest')
+
+
+def verify_loaded_image(path, item, image, sha):
+    # Classic Docker IDs identify the config; containerd IDs identify the manifest.
+    # Compare the saved config digest, runtime settings and all filesystem DiffIDs.
+    with tarfile.open(path, 'r:gz') as archive:
+        manifest = json.load(archive.extractfile('manifest.json'))
+        if len(manifest) != 1 or item['image'] not in manifest[0]['RepoTags']:
+            raise ValueError('Unexpected image archive contents')
+        member = archive.getmember(manifest[0]['Config'])
+        if not member.isfile() or member.size > 4 * 1024**2:
+            raise ValueError('Invalid image configuration')
+        raw = archive.extractfile(member).read()
+    expected = item.get('image_config_sha256', item['image_id'].removeprefix('sha256:'))
+    config = json.loads(raw)
+    if (hashlib.sha256(raw).hexdigest() != expected or image['Config'] != config['config']
+            or image['RootFS']['Layers'] != config['rootfs']['diff_ids']
+            or image['Os'] != config['os'] or image['Architecture'] != config['architecture']
+            or image['Config'].get('Labels', {}).get('org.opencontainers.image.revision') != sha):
+        raise ValueError('Loaded image does not match the tested image')
 
 
 def verify_run(run, sha, path):
@@ -132,13 +154,14 @@ def deploy(root, state_root, release_dir, manifest):
     access = runtime / '.review-access'
     access.mkdir()
     (access / 'htpasswd').symlink_to(root / '.review-access/htpasswd')
+    loaded_images = {}
     for name in ['backend', 'frontend']:
         item = manifest['artifacts'][name]
         run(DOCKER + ['load', '-i', str(release_dir / item['file'])], stdout=subprocess.DEVNULL)
         image = json.loads(capture(DOCKER + ['image', 'inspect', item['image']]))[0]
-        if image['Id'] != item['image_id'] or image['Config']['Labels']['org.opencontainers.image.revision'] != manifest['sha']:
-            raise ValueError('Loaded image does not match the tested image')
-    images = {name: manifest['artifacts']['backend' if name in ['api', 'response-worker', 'migrate'] else 'frontend']['image_id']
+        verify_loaded_image(release_dir / item['file'], item, image, manifest['sha'])
+        loaded_images[name] = image['Id']
+    images = {name: loaded_images['backend' if name in ['api', 'response-worker', 'migrate'] else 'frontend']
               for name in APPS + ['migrate']}
     override = runtime / 'images.json'
     write_json(override, {'services': {name: {'image': image} for name, image in images.items()}})
