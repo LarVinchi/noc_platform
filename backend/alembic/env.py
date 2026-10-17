@@ -5,7 +5,7 @@ import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 # Import your Base and your Model
-from app.models.energy import EnergyImport, EnergyTrialEvent
+from app.models.energy import EnergyImport, EnergyTrialEvent, EnergySourceRevision, EnergySyncState
 from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
 from app.core.config import settings
 from app.models.activity import ActivityEntry

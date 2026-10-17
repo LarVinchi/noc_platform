@@ -1,0 +1,11 @@
+[Unit]
+Description=Deploy a CI-verified AFL NOC stakeholder release
+After=network-online.target docker-desktop.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/steve/Downloads/noc_platform/.review-access/cd/deploy-review-release.py --root /home/steve/Downloads/noc_platform
+UMask=0077
+TimeoutStartSec=30min
+StandardOutput=append:/home/steve/Downloads/noc_platform/.review-access/cd/deploy.log
+StandardError=append:/home/steve/Downloads/noc_platform/.review-access/cd/deploy.log

@@ -1,0 +1,108 @@
+# Isolated stakeholder demo. Preview access is unverified; use sample data only.
+# Run with --env-file .env.review. Only the compiled frontend is published.
+name: noc-review
+
+x-backend: &backend
+  image: noc-review-backend:local
+  build:
+    context: ./backend
+    target: production
+  environment: &environment
+    ENVIRONMENT: development
+    AUTH_MODE: preview
+    POSTGRES_SERVER: db
+    POSTGRES_PORT: '5432'
+    POSTGRES_DB: noc_review
+    POSTGRES_USER: noc_review
+    POSTGRES_PASSWORD: ${NOC_REVIEW_DB_PASSWORD:?Set a separate review database password}
+    DOCUMENT_STORAGE_ROOT: /app/private_documents
+  volumes:
+    - documents:/app/static
+    - private_documents:/app/private_documents
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+  read_only: true
+  tmpfs: [/tmp]
+  logging: &logging
+    driver: json-file
+    options: {max-size: 10m, max-file: '3'}
+
+services:
+  db:
+    image: postgis/postgis:15-3.3
+    environment:
+      POSTGRES_DB: noc_review
+      POSTGRES_USER: noc_review
+      POSTGRES_PASSWORD: ${NOC_REVIEW_DB_PASSWORD:?Set a separate review database password}
+    volumes:
+      - database:/var/lib/postgresql/data
+      - ./db/init-scripts:/docker-entrypoint-initdb.d:ro,z
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U noc_review -d noc_review']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    logging: *logging
+
+  migrate:
+    <<: *backend
+    command: [sh, -c, 'alembic upgrade head && python -m app.preview_response_seed']
+    depends_on:
+      db: {condition: service_healthy}
+
+  api:
+    <<: *backend
+    environment:
+      <<: *environment
+      ENERGY_ONEDRIVE_ENABLED: 'false'
+      ENERGY_FILE_PUSH_ENABLED: ${ENERGY_FILE_PUSH_ENABLED:-false}
+      ENERGY_FILE_PUSH_SOURCE_ID: ${ENERGY_FILE_PUSH_SOURCE_ID:-afl-site-energy}
+      ENERGY_FILE_PUSH_INTERVAL_SECONDS: '3600'
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://localhost:8000/health/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+
+  response-worker:
+    <<: *backend
+    command: [python, -u, -m, app.response_worker]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "from app.core.db import engine; from sqlalchemy import text; c=engine.connect(); assert c.execute(text(\"SELECT updated_at > now() - interval '120 seconds' FROM worker_heartbeats WHERE worker_name='response-escalation'\")).scalar(); c.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 60s
+
+  frontend:
+    image: noc-review-frontend:local
+    build:
+      context: ./frontend
+      target: production
+    ports:
+      - '${NOC_REVIEW_BIND_ADDRESS:?Set the company LAN address}:${NOC_REVIEW_PORT:-8080}:8080'
+    restart: unless-stopped
+    depends_on:
+      api: {condition: service_healthy}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    healthcheck:
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/health/live']
+      interval: 10s
+      timeout: 5s
+      retries: 15
+    logging: *logging
+
+volumes:
+  database:
+  documents:
+  private_documents:

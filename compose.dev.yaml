@@ -9,7 +9,7 @@ services:
       POSTGRES_DB: noc_preview
     volumes:
       - preview_db:/var/lib/postgresql/data
-      - ./db/init-scripts:/docker-entrypoint-initdb.d:ro
+      - ./db/init-scripts:/docker-entrypoint-initdb.d:ro,z
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U noc_preview -d noc_preview']
       interval: 5s
@@ -44,8 +44,8 @@ services:
     ports:
       - '127.0.0.1:18000:8000'
     volumes:
-      - ./backend/app:/app/app
-      - ./backend/tests:/app/tests:ro
+      - ./backend/app:/app/app:z
+      - ./backend/tests:/app/tests:ro,z
       - preview_documents:/app/static
       - preview_private_documents:/app/private_documents
     depends_on:
@@ -64,7 +64,7 @@ services:
     command: [python, -u, -m, app.response_worker]
     restart: unless-stopped
     volumes:
-      - ./backend/app:/app/app:ro
+      - ./backend/app:/app/app:ro,z
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -87,9 +87,9 @@ services:
     ports:
       - '127.0.0.1:5173:5173'
     volumes:
-      - ./frontend/src:/app/src
-      - ./frontend/vite.config.js:/app/vite.config.js:ro
-      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro
+      - ./frontend/src:/app/src:z
+      - ./frontend/vite.config.js:/app/vite.config.js:ro,z
+      - ./frontend/tailwind.config.js:/app/tailwind.config.js:ro,z
     depends_on:
       api:
         condition: service_healthy

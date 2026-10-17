@@ -1,3 +1,7 @@
+> Update, 2026-10-15: PR #1 merged this feature work into `main` at `57daece`.
+> The worktree and merge-status sections below describe the earlier review.
+> Use the [Rocky Linux 9 setup runbook](rocky-linux-9-setup.md) for current server steps.
+
 We have built a substantial **local NOC operating platform**, with connected provisioning, inventory, incident, reporting and document workflows. It is still a development preview: the live company integrations and several production controls remain unfinished.
 
 I reviewed the current implementation and fetched the latest GitHub branch references. **There are currently no merge conflicts with `main`.** Details are below.

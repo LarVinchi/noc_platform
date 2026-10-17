@@ -1,0 +1,11 @@
+[Unit]
+Description=Check for a tested main-branch review release every five minutes
+
+[Timer]
+OnStartupSec=2min
+OnUnitInactiveSec=5min
+Persistent=true
+Unit=noc-review-deploy.service
+
+[Install]
+WantedBy=timers.target

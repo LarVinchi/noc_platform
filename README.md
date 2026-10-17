@@ -7,16 +7,17 @@ architecture decisions, milestones, external dependencies and release criteria.
 **Energy operations** now provides three-site daily reports from an administrator-
 imported RawData tracker, Excel/light/dark email chart exports, traceable source
 records and an isolated local collector trial. See [the energy guide](docs/energy-operations.md).
-Anker OneDrive synchronization, live power detection and operational collector
-cutover are not connected in this milestone.
+For hourly delivery without Graph access, see [OneDrive desktop → SSH workbook delivery](docs/energy-file-delivery.md).
+An optional read-only [OneDrive synchronizer](docs/energy-onedrive-sync.md) is
+implemented but disabled pending Anker application access and company sign-in.
+Live power detection and operational collector cutover remain unconnected.
 
 ## Current development work
 
-Branch: `feat/noc-production-foundation`.
-The initial checkout is an isolated Git worktree at
-`C:\Users\USER\Desktop\projects\fiberviz\noc-platform-worktree`; it shares
-history with `C:\Users\USER\Desktop\projects\noc_platform`. The original
-checkout stays on its existing branch. No changes have been pushed or deployed.
+The production-foundation feature branch was merged into `main` through PR #1
+at `57daece` on 2026-10-14. Development continues from that merged baseline.
+For server installation, use the [Rocky Linux 9 runbook](docs/rocky-linux-9-setup.md).
+The older platform breakdown includes historical Windows worktree instructions.
 
 Implemented: topology expansion follows actual inventory relationships, omits
 inactive allocations and deduplicates enterprise service endpoints. Dashboard
@@ -24,9 +25,10 @@ figures come from incident records with timed refresh, errors and freshness.
 FTTH requests can be parsed from pasted text and logged with external references,
 provenance, duplicate protection and transactional internal numbering.
 
-Microsoft 365 sign-in and API role controls, transactional audit history and
-normalized monitoring ingestion are implemented. Live Entra/PRTG setup,
-engineer escalation, SLA policies, notification delivery and RAG integration remain.
+Microsoft 365 sign-in and API role controls, transactional audit history,
+normalized monitoring ingestion and the response worker with versioned target
+policies are implemented. Live Entra/PRTG setup, contractual target configuration,
+notification delivery and RAG integration remain.
 Local preview uses an explicitly unverified identity; production access requires Entra.
 Do not treat this development application as production ready.
 
@@ -39,6 +41,11 @@ hot reload and shares one backend image across API, migration and worker.
 See [the cleanup audit and build/deployment guide](docs/container-builds.md).
 `compose.production.example.yaml` is a deployment reference with outstanding
 security/configuration/recovery gates, not an approved production release.
+
+For interactive stakeholder review on the company network, use the isolated
+demo stack in `compose.review.yaml`. See the [review setup and operating commands](docs/stakeholder-review.md).
+It serves the compiled frontend, keeps the API/database internal, and uses only
+demonstration data with an unverified preview identity.
 
 ## Advance orders and inspect customer impact
 
@@ -207,3 +214,7 @@ See [the Knowledge workspace guide](docs/knowledge-workspace.md).
 **Mail triage** now includes a private manual preview queue, rule explanations,
 priority hints and review links to existing incidents/FTTH cases. It does not
 monitor a live inbox. See [the preview guide](docs/mail-preview.md).
+
+The stakeholder server can receive CI-verified releases after PRs merge into
+`main`. See [review CI/CD](docs/review-ci-cd.md) for the developer workflow,
+server timer, backup/rollback behavior and production deployment requirements.

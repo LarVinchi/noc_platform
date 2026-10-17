@@ -17,6 +17,15 @@ x-backend: &backend
     ENTRA_SPA_CLIENT_ID: ${ENTRA_SPA_CLIENT_ID:?Set the browser registration ID}
     ENTRA_SCOPE: ${ENTRA_SCOPE:-access_as_user}
     MONITORING_INGEST_TOKEN: ${MONITORING_INGEST_TOKEN:-}
+    ENERGY_FILE_PUSH_ENABLED: ${ENERGY_FILE_PUSH_ENABLED:-false}
+    ENERGY_FILE_PUSH_SOURCE_ID: ${ENERGY_FILE_PUSH_SOURCE_ID:-site-energy}
+    ENERGY_FILE_PUSH_INTERVAL_SECONDS: ${ENERGY_FILE_PUSH_INTERVAL_SECONDS:-3600}
+    ENERGY_ONEDRIVE_ENABLED: ${ENERGY_ONEDRIVE_ENABLED:-false}
+    ENERGY_GRAPH_TENANT_ID: ${ENERGY_GRAPH_TENANT_ID:-}
+    ENERGY_GRAPH_CLIENT_ID: ${ENERGY_GRAPH_CLIENT_ID:-}
+    ENERGY_GRAPH_DRIVE_ID: ${ENERGY_GRAPH_DRIVE_ID:-}
+    ENERGY_GRAPH_ITEM_ID: ${ENERGY_GRAPH_ITEM_ID:-}
+    ENERGY_SYNC_INTERVAL_SECONDS: ${ENERGY_SYNC_INTERVAL_SECONDS:-60}
   volumes:
     - documents:/app/static
     - private_documents:/app/private_documents
@@ -37,10 +46,10 @@ services:
     volumes:
       - database:/var/lib/postgresql/data
       # Schema baseline only. Preview seed 05_seed_data.sql is deliberately excluded.
-      - ./db/init-scripts/01_infrastructure.sql:/docker-entrypoint-initdb.d/01_infrastructure.sql:ro
-      - ./db/init-scripts/02_customers_services.sql:/docker-entrypoint-initdb.d/02_customers_services.sql:ro
-      - ./db/init-scripts/03_incidents_tickets.sql:/docker-entrypoint-initdb.d/03_incidents_tickets.sql:ro
-      - ./db/init-scripts/04_optimized_view.sql:/docker-entrypoint-initdb.d/04_optimized_view.sql:ro
+      - ./db/init-scripts/01_infrastructure.sql:/docker-entrypoint-initdb.d/01_infrastructure.sql:ro,z
+      - ./db/init-scripts/02_customers_services.sql:/docker-entrypoint-initdb.d/02_customers_services.sql:ro,z
+      - ./db/init-scripts/03_incidents_tickets.sql:/docker-entrypoint-initdb.d/03_incidents_tickets.sql:ro,z
+      - ./db/init-scripts/04_optimized_view.sql:/docker-entrypoint-initdb.d/04_optimized_view.sql:ro,z
     restart: unless-stopped
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -h 127.0.0.1 -U noc_platform -d noc_platform']
@@ -75,6 +84,23 @@ services:
       timeout: 5s
       retries: 4
       start_period: 60s
+  energy-sync-worker:
+    <<: *backend
+    profiles: [energy-sync]
+    environment:
+      <<: *environment
+      # Keep Graph credentials out of API, migration and incident-worker containers.
+      ENERGY_GRAPH_CLIENT_SECRET: ${ENERGY_GRAPH_CLIENT_SECRET:-}
+    command: [python, -u, -m, app.energy_sync_worker]
+    restart: unless-stopped
+    depends_on:
+      migrate: {condition: service_completed_successfully}
+    healthcheck:
+      test: [CMD, python, -c, "from app.core.db import engine; from sqlalchemy import text; c=engine.connect(); assert c.execute(text(\"SELECT updated_at > now() - interval '300 seconds' FROM worker_heartbeats WHERE worker_name='energy-onedrive-sync'\")).scalar(); c.close()"]
+      interval: 30s
+      timeout: 5s
+      retries: 4
+      start_period: 120s
   frontend:
     image: ${NOC_FRONTEND_IMAGE:?Set a reviewed frontend image tag or digest}
     ports: ['127.0.0.1:8080:8080']
@@ -86,7 +112,7 @@ services:
     cap_drop: [ALL]
     security_opt: [no-new-privileges:true]
     healthcheck:
-      test: [CMD, wget, -q, -O, /dev/null, 'http://localhost:8080/health/live']
+      test: [CMD, wget, -q, -O, /dev/null, 'http://127.0.0.1:8080/health/live']
       interval: 15s
       timeout: 5s
       retries: 5
