@@ -7,8 +7,10 @@ architecture decisions, milestones, external dependencies and release criteria.
 **Energy operations** now provides three-site daily reports from an administrator-
 imported RawData tracker, Excel/light/dark email chart exports, traceable source
 records and an isolated local collector trial. See [the energy guide](docs/energy-operations.md).
-Anker OneDrive synchronization, live power detection and operational collector
-cutover are not connected in this milestone.
+For hourly delivery without Graph access, see [OneDrive desktop → SSH workbook delivery](docs/energy-file-delivery.md).
+An optional read-only [OneDrive synchronizer](docs/energy-onedrive-sync.md) is
+implemented but disabled pending Anker application access and company sign-in.
+Live power detection and operational collector cutover remain unconnected.
 
 ## Current development work
 

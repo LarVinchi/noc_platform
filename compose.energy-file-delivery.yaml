@@ -1,0 +1,10 @@
+# Optional API environment overlay for hourly workbook delivery.
+# Apply alongside the chosen base Compose file. Requires the new backend image
+# and migration 14c8e2f7a901; this file does not build or deploy either of them.
+services:
+  api:
+    environment:
+      ENERGY_ONEDRIVE_ENABLED: 'false'
+      ENERGY_FILE_PUSH_ENABLED: 'true'
+      ENERGY_FILE_PUSH_SOURCE_ID: ${ENERGY_FILE_PUSH_SOURCE_ID:-afl-site-energy}
+      ENERGY_FILE_PUSH_INTERVAL_SECONDS: '3600'

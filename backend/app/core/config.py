@@ -1,5 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
+from pydantic import Field, SecretStr
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "NOC Platform API"
@@ -12,6 +13,17 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = []
     MONITORING_INGEST_TOKEN: str = ""
     DOCUMENT_STORAGE_ROOT: str = "private_documents"
+    ENERGY_FILE_PUSH_ENABLED: bool = False
+    ENERGY_FILE_PUSH_SOURCE_ID: str = "site-energy"
+    ENERGY_FILE_PUSH_INTERVAL_SECONDS: int = Field(default=3600, ge=60, le=86400)
+    ENERGY_ONEDRIVE_ENABLED: bool = False
+    ENERGY_GRAPH_TENANT_ID: str = ""
+    ENERGY_GRAPH_CLIENT_ID: str = ""
+    ENERGY_GRAPH_DRIVE_ID: str = ""
+    ENERGY_GRAPH_ITEM_ID: str = ""
+    ENERGY_GRAPH_CLIENT_SECRET: SecretStr = SecretStr("")
+    ENERGY_GRAPH_CLIENT_SECRET_FILE: str = ""
+    ENERGY_SYNC_INTERVAL_SECONDS: int = Field(default=60, ge=15, le=3600)
     
     # Database configuration (Defaults to your local Docker setup)
     POSTGRES_USER: str = "noc_admin"

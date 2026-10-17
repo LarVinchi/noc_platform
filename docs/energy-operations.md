@@ -2,8 +2,11 @@
 
 Open **Energy operations** in the Operations navigation after starting the normal
 `dev.ps1` preview. Existing Microsoft 365/preview access controls apply. This
-milestone does not connect to Anker OneDrive, write to Excel, ingest telemetry,
-send mail, or establish a production data cutover.
+milestone does not write to Excel, ingest telemetry, send mail, or establish a
+production data cutover. An optional read-only OneDrive/SharePoint synchronizer
+is implemented, disabled by default. See [configuration and activation](energy-onedrive-sync.md).
+The supplied Anker workbook still requires an approved application identity,
+resource grant and live tenant acceptance before it can be connected.
 
 ## Workbook reporting
 
@@ -66,11 +69,13 @@ database-backed energy integration tests with the existing disposable preview.
 Synthetic XLSX fixtures avoid committing operational files or personal data.
 Frontend lint/build and production image gates continue to apply.
 
-Next: obtain Anker IT approval for a scoped Graph download identity; implement
-retries, import health, source-version reconciliation and protected snapshot
-retention. Complete real Entra/role configuration, data access/retention review,
+The sync slice adds ETag polling, retries, import health, source-version
+reconciliation and protected original snapshots. Next: obtain Anker IT approval
+for a scoped Graph download identity and complete real Entra/role configuration, data access/retention review,
 backup/restore validation, concurrency acceptance and operator reconciliation.
 Then add collector additions/corrections, state confirmation/freshness and a
 reviewed site-by-site cutover. Integrate actual ATS/controller/UPS signals only
 when their meaning and reliability are established. The production design is a
 roadmap, not a claim that these gates have passed.
+
+For an alternative without Graph application access, see [hourly desktop workbook delivery over SSH](energy-file-delivery.md).
