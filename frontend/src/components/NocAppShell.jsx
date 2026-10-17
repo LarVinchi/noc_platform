@@ -1,14 +1,14 @@
 import { createElement, useEffect, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, Network, LogOut, Clock3, ChevronRight, FileText, Mail, BookOpen } from 'lucide-react';
+import { LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, Network, LogOut, Clock3, ChevronRight, FileText, Mail, BookOpen, Zap } from 'lucide-react';
 import { incidentsApi } from '../api/client';
 import AssistantProvider from './AssistantProvider';
 import FloatingAssistant from './FloatingAssistant';
 
-const pages = { '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
+const pages = { '/energy': 'Energy operations', '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
 const navigation = [
   { group: 'FTTH', items: [['/ftth-operations', HardHat, 'FTTH operations']] },
-  { group: 'OPERATIONS', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/response', Clock3, 'Response centre'], ['/provisioning', HardHat, 'Provisioning']] },
+  { group: 'OPERATIONS', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/response', Clock3, 'Response centre'], ['/energy', Zap, 'Energy operations'], ['/provisioning', HardHat, 'Provisioning']] },
   { group: 'NETWORK', items: [['/topology', Map, 'Network topology'], ['/monitoring', Radio, 'Monitoring'], ['/crm', Users, 'Customers & services']] },
   { group: 'KNOWLEDGE', items: [['/documents', FileText, 'Documents'], ['/knowledge', BookOpen, 'Knowledge assistant']] },
   { group: 'COMMUNICATIONS', items: [['/mail', Mail, 'Mail triage']] },
