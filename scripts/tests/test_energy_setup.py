@@ -73,6 +73,7 @@ assert '-Command' not in sys.argv
 assert '-EncodedCommand' in sys.argv
 script = base64.b64decode(sys.argv[sys.argv.index('-EncodedCommand')+1]).decode('utf-16le')
 assert 'Register-ScheduledTask' in script and 'Get-ScheduledTaskInfo' in script
+assert "'pythonw.exe'" in script and '-Execute $BackgroundPython' in script
 assert 'NOC_TASK_STATUS_OK' in script
 assert os.environ['NOC_UPLOAD_WORKBOOK'] == 'C:/Workbook with spaces.xlsx'
 if os.environ['TEST_RESULT'] == 'ok':

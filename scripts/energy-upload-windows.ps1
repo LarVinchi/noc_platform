@@ -55,10 +55,18 @@ try {
             # Require a real successful delivery before enabling any schedule.
             Invoke-Delivery
             $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-            $TaskArguments = '-NoProfile -NonInteractive -File {0} -Action Send -AgentCheck -Workbook {1} -Server {2} -Identity {3}' -f `
-                (Quote-TaskArgument $PSCommandPath), (Quote-TaskArgument $Workbook), `
-                (Quote-TaskArgument $Server), (Quote-TaskArgument $Identity)
-            $TaskAction = New-ScheduledTaskAction -Execute "$env:SystemRoot\System32\WindowsPowerShell\v1.0\powershell.exe" `
+            if (Get-Command py -ErrorAction SilentlyContinue) {
+                $Python = & py -3 -c 'import sys; print(sys.executable)'
+            } else {
+                $Python = & python -c 'import sys; print(sys.executable)'
+            }
+            if ($LASTEXITCODE -ne 0) { throw 'Cannot locate Windows Python.' }
+            $BackgroundPython = Join-Path (Split-Path -Parent $Python) 'pythonw.exe'
+            if (-not (Test-Path -LiteralPath $BackgroundPython -PathType Leaf)) { throw 'Repair Python: pythonw.exe is missing.' }
+            $TaskArguments = '{0} --agent-check --workbook {1} --server {2} --identity {3} --log-file {4}' -f `
+                (Quote-TaskArgument $Sender), (Quote-TaskArgument $Workbook), `
+                (Quote-TaskArgument $Server), (Quote-TaskArgument $Identity), (Quote-TaskArgument $LogFile)
+            $TaskAction = New-ScheduledTaskAction -Execute $BackgroundPython `
                 -Argument $TaskArguments -WorkingDirectory $PSScriptRoot
             $Hourly = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
             $Logon = New-ScheduledTaskTrigger -AtLogOn -User $User
@@ -66,7 +74,7 @@ try {
             $Settings = New-ScheduledTaskSettingsSet -StartWhenAvailable -MultipleInstances IgnoreNew `
                 -ExecutionTimeLimit (New-TimeSpan -Minutes 10) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
             Register-ScheduledTask -TaskName $TaskName -Action $TaskAction -Trigger @($Hourly, $Logon) `
-                -Principal $Principal -Settings $Settings -Description 'Deliver the saved OneDrive energy workbook to the NOC API every hour while signed in.' -Force | Out-Null
+                -Principal $Principal -Settings $Settings -Description 'Check refresh requests every minute; upload on request or hourly while signed in.' -Force | Out-Null
             Write-Host "Windows refresh agent registered for $User. Logs: $LogFile"
         }
         'Status' {

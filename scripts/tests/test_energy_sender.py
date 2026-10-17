@@ -68,6 +68,29 @@ def test_local_check_writes_a_status_log_without_workbook_content(tmp_path, monk
     assert 'private-workbook-bytes' not in log.read_text()
 
 
+@pytest.mark.parametrize('ssh_success', [True, False])
+def test_background_windows_agent_hides_ssh_and_logs_without_console(tmp_path, monkeypatch, ssh_success):
+    key = tmp_path / 'key'
+    key.write_text('placeholder')
+    log = tmp_path / 'agent.log'
+    monkeypatch.setattr(sender.sys, 'argv', ['sender', '--workbook', str(tmp_path / 'tracker.xlsx'),
+        '--server', 'steve@192.168.1.24', '--identity', str(key), '--agent-check', '--log-file', str(log)])
+    monkeypatch.setattr(sender.sys, 'platform', 'win32')
+    monkeypatch.setattr(sender.sys, 'stdout', None)
+    monkeypatch.setattr(sender.sys, 'stderr', None)
+    monkeypatch.setattr(sender.shutil, 'which', lambda name: '/test/ssh')
+    monkeypatch.setattr(sender.subprocess, 'CREATE_NO_WINDOW', 0x08000000, raising=False)
+    monkeypatch.setattr(sender.time, 'sleep', lambda seconds: None)
+    def run(command, **kwargs):
+        assert kwargs['creationflags'] == 0x08000000
+        assert kwargs['stdout'] == kwargs['stderr'] == sender.subprocess.PIPE
+        return SimpleNamespace(returncode=0 if ssh_success else 255,
+            stdout=b'{"outcome":"poll","upload_required":false}', stderr=b'SSH authentication failed')
+    monkeypatch.setattr(sender.subprocess, 'run', run)
+    assert sender.main() == (0 if ssh_success else 1)
+    assert ('idle' if ssh_success else 'Energy upload failed') in log.read_text()
+
+
 @pytest.mark.parametrize('required', [False, True])
 def test_agent_reads_workbook_only_when_due_and_acknowledges_web_request(tmp_path, monkeypatch, required):
     path, key = tmp_path / 'tracker.xlsx', tmp_path / 'upload-key'

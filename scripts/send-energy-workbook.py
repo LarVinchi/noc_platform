@@ -50,7 +50,9 @@ def main():
     logger.propagate = False
 
     def emit(message, error=False):
-        print(message, file=sys.stderr if error else sys.stdout)
+        stream = sys.stderr if error else sys.stdout
+        if stream is not None:  # pythonw.exe has no console streams.
+            print(message, file=stream)
         if handler:
             logger.info(message)
 
@@ -80,7 +82,8 @@ def main():
                    '-o', 'ServerAliveInterval=15', '-o', 'ServerAliveCountMax=3', args.server]
         def exchange(payload):
             for attempt in range(3):
-                result = subprocess.run(command, input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180)
+                options = {'creationflags': subprocess.CREATE_NO_WINDOW} if sys.platform == 'win32' else {}
+                result = subprocess.run(command, input=payload, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=180, **options)
                 if result.returncode == 0:
                     return json.loads(result.stdout)
                 if attempt < 2:

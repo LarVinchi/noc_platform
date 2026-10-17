@@ -1,5 +1,41 @@
 # NOC1 hourly energy workbook upload
 
+## Stop recurring Python windows
+
+The agent checks every minute. Older task definitions launch `python.exe`,
+which opens a console each time. The current installer uses `pythonw.exe`
+and hides its SSH subprocess. It continues writing results and errors to
+`C:\Users\NOC1\AppData\Local\AFLNOC\energy-upload.log`.
+
+Upgrade from Git Bash as NOC1:
+
+```bash
+cd /c/NOC
+scp steve@192.168.1.24:/home/steve/Downloads/noc_platform/.review-access/energy-windows.zip energy-windows.zip
+py -3 -m zipfile -e energy-windows.zip .
+bash setup-energy-windows.sh --enable
+bash setup-energy-windows.sh --status
+```
+
+This replaces the existing scheduled task and preserves the workbook and SSH key.
+The setup's test upload runs visibly; subsequent scheduled checks run in the background.
+
+For a passphrase-protected key, enable Windows OpenSSH's agent in administrator PowerShell:
+
+```powershell
+Set-Service ssh-agent -StartupType Automatic
+Start-Service ssh-agent
+```
+
+Then load the key in normal PowerShell as NOC1 and enter its passphrase locally:
+
+```powershell
+& "$env:WINDIR\System32\OpenSSH\ssh-add.exe" "$env:USERPROFILE\.ssh\noc-energy-upload"
+```
+
+The scheduled sender uses noninteractive SSH and logs authentication failures;
+it cannot answer a passphrase prompt itself. Keep the private key on Windows.
+
 Prepared for `NOC1` on Windows, uploading to `steve@192.168.1.24` over the
 company network. This does not use the public HTTPS review URL for transfers.
 

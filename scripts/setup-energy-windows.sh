@@ -133,7 +133,11 @@ try {
         }
         $Arguments = '{0} --workbook {1} --server {2} --identity {3} --log-file {4} --agent-check' -f (Quote-Argument $env:NOC_UPLOAD_SENDER), (Quote-Argument $env:NOC_UPLOAD_WORKBOOK), (Quote-Argument $env:NOC_UPLOAD_SERVER), (Quote-Argument $env:NOC_UPLOAD_KEY), (Quote-Argument $Log)
         $User = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
-        $Action = New-ScheduledTaskAction -Execute $env:NOC_UPLOAD_PYTHON -Argument $Arguments
+        $BackgroundPython = Join-Path (Split-Path -Parent $env:NOC_UPLOAD_PYTHON) 'pythonw.exe'
+        if (-not (Test-Path -LiteralPath $BackgroundPython -PathType Leaf)) {
+            throw 'pythonw.exe is missing beside Python. Repair the Windows Python installation before enabling the background agent.'
+        }
+        $Action = New-ScheduledTaskAction -Execute $BackgroundPython -Argument $Arguments
         $Hourly = New-ScheduledTaskTrigger -Once -At (Get-Date).AddMinutes(1) -RepetitionInterval (New-TimeSpan -Minutes 1)
         $Logon = New-ScheduledTaskTrigger -AtLogOn -User $User
         $Principal = New-ScheduledTaskPrincipal -UserId $User -LogonType Interactive -RunLevel Limited
