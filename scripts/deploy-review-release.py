@@ -181,7 +181,7 @@ def deploy(root, state_root, release_dir, manifest):
                                 pass
         write_json(backup / 'checksums.json', {p.name: digest(p) for p in backup.iterdir() if p.is_file()})
         (backup / 'backup-complete').write_text('Verified database dump and document archives.\n')
-        run(candidate + ['run', '--rm', '--no-deps', '--no-build', 'migrate'], stdout=subprocess.DEVNULL)
+        run(candidate + ['run', '--rm', '--no-deps', 'migrate'], stdout=subprocess.DEVNULL)
         run(candidate + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *APPS], stdout=subprocess.DEVNULL)
         # Validate the anonymous public upstream stays password protected.
         try:
