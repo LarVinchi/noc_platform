@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ShieldCheck, Network } from 'lucide-react';
+import { ShieldCheck, Network, Activity, Clock3, LockKeyhole } from 'lucide-react';
+import ThemeSelector from '../components/ThemeSelector';
 
 export default function NOCLoginScreen({ configuration, error, onLogin }) {
-  const [busy, setBusy] = useState(false);
-  const [failure, setFailure] = useState('');
+  const [busy, setBusy] = useState(false), [failure, setFailure] = useState('');
   const preview = configuration?.mode === 'preview';
   async function enter() {
     setBusy(true); setFailure('');
@@ -11,20 +11,12 @@ export default function NOCLoginScreen({ configuration, error, onLogin }) {
     catch (error) { setFailure(error.response?.data?.detail || error.message); }
     finally { setBusy(false); }
   }
-  return <div className="min-h-screen bg-charcoal-950 text-slate-200 flex items-center justify-center p-6">
-    <div className="w-full max-w-lg rounded-2xl border border-slate-700 bg-charcoal-900 p-10 shadow-2xl">
-      <Network className="text-cyan-400 mb-6" size={36} />
-      <p className="text-xs text-cyan-400 uppercase tracking-widest">Network operations centre</p>
-      <h1 className="text-3xl font-semibold mt-3 mb-4">NOC workspace</h1>
-      <p className="text-slate-400 mb-6">{preview
-        ? 'Local development preview. Actions use an unverified preview identity. Use sample data here.'
-        : 'Use your company Microsoft 365 account. Access depends on your assigned NOC role.'}</p>
-      {(failure || error) && <p role="alert" className="text-red-300 mb-4">{failure || error}</p>}
-      {configuration && !configuration.configured && <p className="text-amber-300 mb-4">Microsoft 365 registration is pending. An administrator must configure access before this environment can be used.</p>}
-      <button onClick={enter} disabled={busy || !configuration?.configured}
-        className="w-full rounded-lg bg-cyan-600 p-3 font-medium disabled:opacity-40 flex items-center justify-center gap-2">
-        <ShieldCheck size={18} />{busy ? 'Opening workspace…' : preview ? 'Open local preview' : 'Sign in with Microsoft 365'}
-      </button>
-    </div>
-  </div>;
+  return <main className="noc-login"><section className="login-intro"><div className="login-brand"><span className="noc-brand-mark"><Network size={23} /></span>AFL NOC</div><div><p className="eyebrow">NETWORK OPERATIONS CENTRE</p><h1>A clear view.<br />A coordinated response.</h1><p>Your workspace for incident response, infrastructure visibility and a connected shift handover.</p><div className="login-features"><span><Activity size={15} />Operational focus</span><span><ShieldCheck size={15} />Role-based access</span><span><Clock3 size={15} />Lagos · WAT</span></div></div><footer>AFL · Network operations workspace</footer></section>
+    <section className="login-access"><div className="login-card"><LockKeyhole size={25} className="text-cyan-400" /><h2>Welcome to your workspace</h2><p>{preview ? 'Local development environment. Actions use an unverified preview identity. Use sample data only.' : 'Sign in with your company Microsoft 365 account to continue. Access is based on your assigned NOC role.'}</p>
+      {(failure || error) && <p role="alert" className="response-error">{failure || error}</p>}
+      {configuration && !configuration.configured && <p className="response-preview">Microsoft 365 registration is pending. An administrator must configure access.</p>}
+      <button onClick={enter} disabled={busy || !configuration?.configured} className="response-button primary"><ShieldCheck size={17} />{busy ? 'Opening workspace…' : preview ? 'Open local preview' : 'Sign in with Microsoft 365'}</button>
+      {import.meta.env.DEV && <a href="/demo/" className="login-demo-link">Explore the design demo · no sign-in required</a>}
+      <p className="login-access-note">Authorized personnel only. Operational changes remain subject to existing permissions and audit records.</p><ThemeSelector />
+    </div></section></main>;
 }
