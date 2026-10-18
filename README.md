@@ -12,6 +12,10 @@ An optional read-only [OneDrive synchronizer](docs/energy-onedrive-sync.md) is
 implemented but disabled pending Anker application access and company sign-in.
 Live power detection and operational collector cutover remain unconnected.
 
+Energy operations also includes [weekly reporting](docs/weekly-energy-report.md):
+Monday–Sunday charts and pivot tables, separate chart/table image copying,
+meter details, and one-second copy feedback for daily and weekly reports.
+
 ## Current development work
 
 The production-foundation feature branch was merged into `main` through PR #1

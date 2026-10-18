@@ -17,6 +17,7 @@ from app.models.energy import EnergyImport, EnergyTrialEvent, EnergySourceRevisi
 from app.services.energy_reporting import make_report, metadata, records_from_json, records_to_json
 from app.services.energy_collector import trial_records, trial_coverage
 from app.services.energy_import import MAX_WORKBOOK_BYTES, InvalidEnergyWorkbook, parse_workbook
+from app.services.energy_weekly import weekly_report
 from app.services.energy_sync import selected_import, sync_status, queue_sync, snapshot_path
 from app.services.energy_onedrive import configuration_errors
 from app.services.energy_onedrive import SyncFailure
@@ -166,6 +167,25 @@ def report(day: dt.date, source: Literal['workbook', 'trial'] = 'workbook', db: 
     return {**make_report(records, day.isoformat()), **provenance, 'mode': source,
             'trial_coverage': trial_coverage(events, day.isoformat()) if source == 'trial' else None,
             'telemetry_connected': False, 'notice': 'Unaccounted time is not downtime: all sites have batteries.'}
+
+
+@router.get('/weekly')
+def weekly(week_start: dt.date, source: Literal['workbook', 'trial'] = 'workbook', db: Session = Depends(get_db)):
+    if week_start.weekday() != 0 or not dt.date(2000, 1, 3) <= week_start <= dt.datetime.now(WAT).date():
+        raise HTTPException(422, 'Choose a Monday between 2000-01-03 and today in Lagos')
+    if source == 'trial':
+        if not trial_enabled():
+            raise HTTPException(409, 'Collector trial reports are available only in local preview')
+        events = db.query(EnergyTrialEvent).order_by(EnergyTrialEvent.site, EnergyTrialEvent.revision).all()
+        records = trial_records(events)
+        provenance = {'source': 'Isolated collector trial', 'import': None}
+    else:
+        value = latest_import(db)
+        if value is None:
+            raise HTTPException(404, 'Import the RawData tracker before opening weekly reports')
+        records = records_from_json(value.records)
+        provenance = {'source': value.source_name, 'import': import_info(value)}
+    return {**weekly_report(records, week_start.isoformat()), **provenance, 'mode': source}
 
 
 class Observation(BaseModel):
