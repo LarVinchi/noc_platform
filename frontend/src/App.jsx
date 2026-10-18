@@ -17,6 +17,7 @@ import FtthOperations from './pages/FtthOperations';
 import MailTriage from './pages/MailTriage';
 import Knowledge from './pages/Knowledge';
 import EnergyOperations from './pages/EnergyOperations';
+import ServerHealth from './pages/ServerHealth';
 
 function App() {
   // Authentication State
@@ -52,6 +53,7 @@ function App() {
           <Route path="/knowledge" element={<Knowledge />} />
           <Route path="/audit" element={<AuditHistory />} />
           <Route path="/energy" element={<EnergyOperations identity={identity} />} />
+          <Route path="/server-health" element={<ServerHealth identity={identity} />} />
           <Route path="/monitoring" element={<Monitoring identity={identity} />} />
         </Routes>
       </NocAppShell>

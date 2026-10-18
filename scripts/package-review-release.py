@@ -15,6 +15,8 @@ RUNTIME_FILES = [
         'infrastructure', 'customers_services', 'incidents_tickets', 'optimized_view', 'seed_data'], 1)],
     'scripts/send-energy-workbook.py', 'scripts/setup-energy-windows.sh',
     'scripts/energy-upload-windows.ps1', 'docs/energy-windows-noc1.md',
+    'scripts/noc-host-agent.py', 'scripts/install-host-monitoring.py',
+    'scripts/deploy-review-release.py', 'docs/server-health.md',
 ]
 
 

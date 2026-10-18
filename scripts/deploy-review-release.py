@@ -14,6 +14,7 @@ import subprocess
 import tarfile
 import urllib.error
 import urllib.request
+from uuid import uuid4
 
 REPOSITORY = 'LarVinchi/noc_platform'
 APPS = ['api', 'response-worker', 'frontend', 'public-gateway']
@@ -143,11 +144,40 @@ def write_json(path, value):
 
 def compose(root, runtime=None):
     location = runtime or root
-    return DOCKER + ['compose', '-p', 'noc-review', '--env-file', str(root / '.env.review'),
-                     '-f', str(location / 'compose.review.yaml'), '-f', str(location / 'compose.review.public.yaml')]
+    command = DOCKER + ['compose', '-p', 'noc-review', '--env-file', str(root / '.env.review'),
+                        '-f', str(location / 'compose.review.yaml'), '-f', str(location / 'compose.review.public.yaml')]
+    monitoring = root / '.review-access/monitoring/compose.json'
+    if monitoring.is_file() and (monitoring.parent / 'enabled').is_file():
+        command += ['-f', str(monitoring)]
+    return command
+
+
+def report_stage(state, sha, stage, result='running', begin=False, rollback=None, error_type=None):
+    """Only sanitized operational metadata; private logs and backup paths stay private."""
+    state.mkdir(parents=True, exist_ok=True)
+    path = state / 'status.json'
+    stamp = dt.datetime.now(dt.timezone.utc).isoformat()
+    try:
+        value = json.loads(path.read_text()) if path.exists() else {}
+    except (OSError, ValueError):
+        value = {}
+    if begin or value.get('target_sha') != sha:
+        value = {'attempt_id': str(uuid4()) if begin else None, 'target_sha': sha,
+                 'started_at': stamp if begin else None, 'rollback': 'not_needed'}
+    value.update(stage=stage, result=result, updated_at=stamp, error_type=error_type)
+    if rollback:
+        value['rollback'] = rollback
+    write_json(path, value)
+    if value.get('attempt_id'):
+        attempts = state / 'attempts'
+        attempts.mkdir(exist_ok=True)
+        write_json(attempts / (value['attempt_id']+'.json'), value)
+        for expired in sorted(attempts.glob('*.json'), key=lambda p: p.stat().st_mtime, reverse=True)[100:]:
+            expired.unlink()
 
 
 def deploy(root, state_root, release_dir, manifest):
+    report_stage(state_root, manifest['sha'], 'loading_images')
     runtime = release_dir / 'runtime'
     runtime.mkdir()
     extract_runtime(release_dir / 'runtime.tar.gz', runtime)
@@ -184,6 +214,7 @@ def deploy(root, state_root, release_dir, manifest):
     rollback_command = DOCKER + ['compose', '-p', 'noc-review', '-f', str(rollback_file)]
     stopped = False
     try:
+        report_stage(state_root, manifest['sha'], 'backing_up')
         stopped = True
         run(previous + ['stop', *APPS], stdout=subprocess.DEVNULL)
         with (backup / 'database.dump').open('wb') as stream:
@@ -204,8 +235,11 @@ def deploy(root, state_root, release_dir, manifest):
                                 pass
         write_json(backup / 'checksums.json', {p.name: digest(p) for p in backup.iterdir() if p.is_file()})
         (backup / 'backup-complete').write_text('Verified database dump and document archives.\n')
+        report_stage(state_root, manifest['sha'], 'migrating')
         run(candidate + ['run', '--rm', '--no-deps', 'migrate'], stdout=subprocess.DEVNULL)
+        report_stage(state_root, manifest['sha'], 'starting')
         run(candidate + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *APPS], stdout=subprocess.DEVNULL)
+        report_stage(state_root, manifest['sha'], 'health_check')
         # Validate the anonymous public upstream stays password protected.
         try:
             urllib.request.build_opener(urllib.request.ProxyHandler({})).open('http://127.0.0.1:18080/', timeout=15)
@@ -224,10 +258,17 @@ def deploy(root, state_root, release_dir, manifest):
                     raise ValueError('Authenticated review access failed')
         write_json(previous_state, {'sha': manifest['sha'], 'runtime': str(runtime), 'backup': str(backup),
                                    'deployed_at': dt.datetime.now(dt.timezone.utc).isoformat()})
-    except Exception:
+        report_stage(state_root, manifest['sha'], 'complete', 'success')
+    except Exception as error:
         if stopped:
+            report_stage(state_root, manifest['sha'], 'rollback', rollback='attempted')
             # Schema downgrades and destructive restores require operator review.
-            run(rollback_command + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *APPS], stdout=subprocess.DEVNULL)
+            try:
+                run(rollback_command + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *APPS], stdout=subprocess.DEVNULL)
+            except Exception as rollback_error:
+                report_stage(state_root, manifest['sha'], 'failed', 'failed', rollback='failed', error_type=type(rollback_error).__name__)
+                raise
+            report_stage(state_root, manifest['sha'], 'failed', 'failed', rollback='succeeded', error_type=type(error).__name__)
         raise
 
 
@@ -246,21 +287,25 @@ def main():
         except BlockingIOError:
             print('Another deployment is running')
             return
+        write_json(state / 'heartbeat.json', {'checked_at': dt.datetime.now(dt.timezone.utc).isoformat()})
         sha = api('commits/main')['sha']
         if not re.fullmatch('[0-9a-f]{40}', sha):
             raise ValueError('Invalid main commit')
         current = state / 'current.json'
         failed = state / 'failed.json'
         if current.exists() and json.loads(current.read_text())['sha'] == sha:
+            report_stage(state, sha, 'idle', 'success')
             print('Already running tested main:', sha)
             return
         if failed.exists() and json.loads(failed.read_text())['sha'] == sha and not args.retry:
+            report_stage(state, sha, 'failed', 'failed')
             print('Deployment failed previously; inspect failed.json and retry explicitly:', sha)
             return
         try:
             release = api('releases/tags/review-' + sha)
         except urllib.error.HTTPError as error:
             if error.code == 404:
+                report_stage(state, sha, 'waiting_for_release', 'waiting')
                 print('Waiting for a tested main release:', sha)
                 return
             raise
@@ -283,6 +328,7 @@ def main():
             else:
                 valid = verify_run(workflow, sha, path) and workflow.get('event') == event
             if not valid:
+                report_stage(state, sha, 'waiting_for_build', 'waiting')
                 print('Waiting for successful release provenance:', key)
                 return
         release_dir = root / '.review-access/releases' / sha
@@ -291,13 +337,17 @@ def main():
             shutil.rmtree(release_dir)
         release_dir.mkdir(parents=True)
         try:
+            report_stage(state, sha, 'downloading', begin=True)
             for item in manifest['artifacts'].values():
                 download(assets[item['file']]['browser_download_url'], release_dir / item['file'], item['size'], item['sha256'])
+            report_stage(state, sha, 'verifying')
             if api('commits/main')['sha'] != sha:
+                report_stage(state, sha, 'waiting_for_release', 'waiting')
                 print('Main advanced while downloading; wait for its next release')
                 return
             deploy(root, state, release_dir, manifest)
         except Exception as error:
+            report_stage(state, sha, 'failed', 'failed', error_type=type(error).__name__)
             write_json(failed, {'sha': sha, 'error_type': type(error).__name__,
                                 'detail': error.stderr.decode(errors='replace')[-4000:] if isinstance(error, subprocess.CalledProcessError) and error.stderr else str(error),
                                 'notice': 'Inspect private deployment journal and backup. Application rollback attempted; database not downgraded.'})

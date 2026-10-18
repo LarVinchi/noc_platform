@@ -59,6 +59,14 @@ def validate_token(token):
 
 
 def authenticate(headers, method, path):
+    if path == '/api/platform-health/ingest' and method == 'POST':
+        secret = settings.PLATFORM_AGENT_INGEST_TOKEN.get_secret_value()
+        if len(secret) < 32:
+            raise HTTPException(503, 'Host-agent intake is not configured')
+        scheme, _, token = headers.get('authorization', '').partition(' ')
+        if scheme.lower() != 'bearer' or len(token) > 512 or not compare_digest(token.encode(), secret.encode()):
+            raise HTTPException(401, 'Invalid host-agent credential')
+        return {'id': 'host-agent:' + settings.PLATFORM_AGENT_HOST_ID, 'verified': True, 'roles': ['HostAgent']}
     if path == "/api/monitoring/events" and method == "POST":
         secret = settings.MONITORING_INGEST_TOKEN
         if len(secret) < 32:
@@ -79,7 +87,7 @@ def authenticate(headers, method, path):
         actor = validate_token(token)
     roles = set(actor["roles"])
     admin_write = any(path.startswith(prefix) for prefix in ("/api/monitoring/mappings", "/api/operations/engineers", "/api/operations/policies")) and method not in {"GET", "HEAD", "OPTIONS"}
-    if (path.startswith("/api/audit") or admin_write) and "NOC.Admin" not in roles:
+    if (path.startswith("/api/audit") or path.startswith('/api/platform-health') or admin_write) and "NOC.Admin" not in roles:
         raise HTTPException(403, "Administrator role required")
     if method not in {"GET", "HEAD", "OPTIONS"} and not roles.intersection({"NOC.Operator", "NOC.Admin"}):
         raise HTTPException(403, "Operator role required")

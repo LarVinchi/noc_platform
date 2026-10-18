@@ -1,5 +1,10 @@
 # Knowledge workspace and floating assistant preview
 
+The colleague's repository was received and statically reviewed on 2026-10-18.
+See [the RAG integration review](rag-integration-review.md) for concrete gaps and
+the proposed private adapter contract. Runtime connection remains pending; the
+separate completeness tool has not been supplied.
+
 Start the platform with `./dev.ps1` and open http://localhost:5173.
 The sidebar's **Knowledge assistant** opens `/knowledge` with a question panel
 and an authorized source catalogue. A bottom-right **AI assistant** launcher is

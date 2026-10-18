@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 from sqlalchemy.engine import URL
-from pydantic import Field, SecretStr
+from pydantic import Field, SecretStr, model_validator
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "NOC Platform API"
@@ -12,6 +12,10 @@ class Settings(BaseSettings):
     ENTRA_SCOPE: str = "access_as_user"
     CORS_ORIGINS: list[str] = []
     MONITORING_INGEST_TOKEN: str = ""
+    PLATFORM_AGENT_INGEST_TOKEN: SecretStr = SecretStr("")
+    PLATFORM_AGENT_HOST_ID: str = "noc-review-host"
+    PLATFORM_WARNING_PERCENT: float = Field(default=80, ge=1, le=99)
+    PLATFORM_CRITICAL_PERCENT: float = Field(default=90, ge=1, le=100)
     DOCUMENT_STORAGE_ROOT: str = "private_documents"
     ENERGY_FILE_PUSH_ENABLED: bool = False
     ENERGY_FILE_PUSH_SOURCE_ID: str = "site-energy"
@@ -31,6 +35,12 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = "localhost"
     POSTGRES_PORT: str = "5433" # We used 5433 to avoid your local pgAdmin conflict
     POSTGRES_DB: str = "noc_platform_db"
+
+    @model_validator(mode='after')
+    def valid_platform_thresholds(self):
+        if self.PLATFORM_WARNING_PERCENT >= self.PLATFORM_CRITICAL_PERCENT:
+            raise ValueError('Platform warning threshold must be below the critical threshold')
+        return self
     
     @property
     def SQLALCHEMY_DATABASE_URI(self) -> str:
