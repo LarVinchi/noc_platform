@@ -18,6 +18,12 @@ meter details, and one-second copy feedback for daily and weekly reports.
 
 ## Current development work
 
+Administrators can use **Governance → Server health** for host resources, container
+health, actual running versions and deployment progress. The separate Linux host
+collector requires [one-time server activation](docs/server-health.md); until it
+reports, the page displays an explicit empty state. The existing CI release flow
+continues to build and verify application images before server deployment.
+
 The production-foundation feature branch was merged into `main` through PR #1
 at `57daece` on 2026-10-14. Development continues from that merged baseline.
 For server installation, use the [Rocky Linux 9 runbook](docs/rocky-linux-9-setup.md).

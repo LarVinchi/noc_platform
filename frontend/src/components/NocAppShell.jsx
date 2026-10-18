@@ -1,11 +1,11 @@
 import { createElement, useEffect, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, Network, LogOut, Clock3, ChevronRight, FileText, Mail, BookOpen, Zap } from 'lucide-react';
+import { Server, LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, Network, LogOut, Clock3, ChevronRight, FileText, Mail, BookOpen, Zap } from 'lucide-react';
 import { incidentsApi } from '../api/client';
 import AssistantProvider from './AssistantProvider';
 import FloatingAssistant from './FloatingAssistant';
 
-const pages = { '/energy': 'Energy operations', '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
+const pages = { '/server-health': 'Server health & deployments', '/energy': 'Energy operations', '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
 const navigation = [
   { group: 'FTTH', items: [['/ftth-operations', HardHat, 'FTTH operations']] },
   { group: 'OPERATIONS', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/response', Clock3, 'Response centre'], ['/energy', Zap, 'Energy operations'], ['/provisioning', HardHat, 'Provisioning']] },
@@ -41,7 +41,7 @@ export default function NocAppShell({ children, identity, onLogout }) {
       <Link to="/" className="noc-brand" aria-label="NOC operations overview"><span className="noc-brand-mark"><Network size={23} /></span><span className="nav-copy"><strong>AFL<span>NOC</span></strong><small>NETWORK OPERATIONS</small></span></Link>
       <nav aria-label="Main navigation" className="noc-navigation">
         {navigation.map(group => <div className="nav-group" key={group.group}><p className="nav-group-label nav-copy">{group.group}</p>{group.items.map(([to, Icon, label]) => <NavLink end={to === '/'} key={to} to={to} title={label} className={({ isActive }) => `noc-nav-link ${isActive ? 'is-active' : ''}`}>{createElement(Icon, { size: 19 })}<span className="nav-copy">{label}</span>{to === '/incidents' && feed.active > 0 && <span className="nav-count nav-copy">{feed.active}</span>}</NavLink>)}</div>)}
-        {identity.roles.includes('NOC.Admin') && <div className="nav-group"><p className="nav-group-label nav-copy">GOVERNANCE</p><NavLink to="/audit" title="Audit history" className={({ isActive }) => `noc-nav-link ${isActive ? 'is-active' : ''}`}><History size={19} /><span className="nav-copy">Audit history</span></NavLink></div>}
+        {identity.roles.includes('NOC.Admin') && <div className="nav-group"><p className="nav-group-label nav-copy">GOVERNANCE</p><NavLink to="/server-health" title="Server health" className={({ isActive }) => `noc-nav-link ${isActive ? 'is-active' : ''}`}><Server size={19} /><span className="nav-copy">Server health</span></NavLink><NavLink to="/audit" title="Audit history" className={({ isActive }) => `noc-nav-link ${isActive ? 'is-active' : ''}`}><History size={19} /><span className="nav-copy">Audit history</span></NavLink></div>}
       </nav>
       <div className="noc-sidebar-footer"><span className={`identity-dot ${identity.verified ? 'verified' : ''}`} /><div className="nav-copy"><strong>{identity.verified ? 'Company workspace' : 'LOCAL PREVIEW'}</strong><small>{identity.verified ? identity.roles.join(' · ') : 'Unverified development identity'}</small></div></div>
     </aside>
