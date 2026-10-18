@@ -226,8 +226,34 @@ def github_snapshot(token=None):
     main = http_json(base+'commits/main', token=token)['sha']
     runs = http_json(base+'actions/workflows/verify.yml/runs?branch=main&event=push&per_page=5', token=token)['workflow_runs']
     run = next((row for row in runs if row['head_sha'] == main), {})
-    releases = http_json(base+'releases?per_page=5', token=token)
-    release = next((row['tag_name'][7:] for row in releases if not row['draft'] and row['tag_name'].startswith('review-') and REVISION.fullmatch(row['tag_name'][7:])), None)
+    # GitHub's release list is not a publication-order guarantee. In particular,
+    # an older release can precede the release that the server just installed.
+    # Resolve main's immutable release by tag, as the deployer itself does.
+    try:
+        current_release = http_json(base+'releases/tags/review-'+main, token=token)
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        current_release = {}
+    if (current_release.get('tag_name') == 'review-'+main and not current_release.get('draft', True)
+            and current_release.get('published_at')):
+        release = main
+    else:
+        # Main may still be building. Show the most recently published review
+        # release in the returned page rather than trusting API list position.
+        releases = http_json(base+'releases?per_page=100', token=token)
+        published = []
+        for row in releases:
+            tag = row.get('tag_name', '')
+            if row.get('draft', True) or not tag.startswith('review-') or not REVISION.fullmatch(tag[7:]):
+                continue
+            try:
+                stamp = dt.datetime.fromisoformat(row['published_at'].replace('Z', '+00:00'))
+            except (KeyError, AttributeError, TypeError, ValueError):
+                continue
+            if stamp.tzinfo is not None:
+                published.append((stamp, tag[7:]))
+        release = max(published)[1] if published else None
     return {'main_sha': main, 'release_sha': release, 'build_sha': run.get('head_sha'),
         'build_status': run.get('status') if run.get('status') in ('queued', 'in_progress', 'completed') else 'unknown', 'build_result': run.get('conclusion'),
         'build_run_id': run.get('id'), 'checked_at': now(), 'error': None}

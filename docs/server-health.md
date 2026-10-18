@@ -64,6 +64,10 @@ cannot provide an accessible dashboard while the whole NOC application is offlin
   abandoned deployment. Running stages also have a 30-minute freshness limit.
 
 The deployment timeline shows build, release, server progress and final result.
+The collector resolves main's published immutable release by exact `review-<sha>`
+tag. GitHub release-list position is not treated as publication order. While main
+has no published release, the fallback shows the newest publication timestamp in
+the returned review-release page; it does not certify the running version.
 Deployer stages are downloading, verifying, loading images, backing up, migrating,
 starting, checking health and rollback. Private logs, environment values and backup
 contents are never included in agent reports or published to GitHub.
@@ -100,6 +104,11 @@ there (including the Docker Desktop image storage filesystem when different).
 Restart the collector after configuration changes. The first report may lack CPU
 rates/GitHub metadata; the next observations fill them. The updated deployment checker
 reports on its next scheduled five-minute check.
+
+The collector executes a protected copy outside the application containers. After
+deploying a release that changes the collector, rerun the activation command above
+to refresh that copy and restart the service; repeat activation preserves its token.
+Updating the API/frontend images alone does not refresh the running collector.
 
 ```bash
 systemctl --user restart noc-host-agent.service
