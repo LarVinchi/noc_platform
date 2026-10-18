@@ -12,6 +12,26 @@ spec.loader.exec_module(deployer)
 SHA = 'a' * 40
 
 
+def test_stage_history_and_private_overlay_are_explicit(tmp_path):
+    import json
+    state=tmp_path/'.review-access/cd'
+    deployer.report_stage(state,SHA,'downloading',begin=True)
+    first=json.loads((state/'status.json').read_text())
+    deployer.report_stage(state,SHA,'migrating')
+    second=json.loads((state/'status.json').read_text())
+    assert first['attempt_id']==second['attempt_id']
+    assert second['stage']=='migrating' and second['result']=='running'
+    deployer.report_stage(state,SHA,'failed','failed',rollback='succeeded',error_type='CalledProcessError')
+    assert len(list((state/'attempts').glob('*.json')))==1
+    assert json.loads((state/'status.json').read_text())['rollback']=='succeeded'
+    overlay=tmp_path/'.review-access/monitoring/compose.json'
+    overlay.parent.mkdir(parents=True)
+    overlay.write_text('{}')
+    assert str(overlay) not in deployer.compose(tmp_path)
+    (overlay.parent/'enabled').write_text('enabled')
+    assert str(overlay) in deployer.compose(tmp_path)
+
+
 def manifest():
     value = {'schema': 1, 'repository': deployer.REPOSITORY, 'sha': SHA, 'verify_run_id': 1, 'release_run_id': 2,
              'artifacts': {name: {'file': name + '.tar.gz', 'size': 10, 'sha256': 'b' * 64} for name in ['backend', 'frontend', 'runtime']}}
