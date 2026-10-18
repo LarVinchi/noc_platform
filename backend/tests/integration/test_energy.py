@@ -52,6 +52,19 @@ def test_workbook_import_roles_duplicate_revision_and_reports(api, monkeypatch):
     report = client.get('/api/energy/report',params={'day':'2026-07-04'}).json()
     assert report['sites'][0]['gridHours'] == 12
     assert report['sites'][0]['gridPartial']
+    weekly = client.get('/api/energy/weekly', params={'week_start': '2026-06-29'})
+    assert weekly.status_code == 200, weekly.text
+    summary = weekly.json()
+    assert summary['mode'] == 'workbook'
+    assert summary['import']['id'] == first.json()['import']['id']
+    assert len(summary['sites']) == 3
+    site = summary['sites'][0]
+    assert site['meterNumbers'] == ['04174881666']
+    assert len(site['days']) == 7
+    assert site['days'][5]['gridHours'] == report['sites'][0]['gridHours']
+    assert site['gridHours'] == 12
+    assert site['averageGridHours'] is None
+    assert site['gridPartial']
     assert client.post('/api/energy/imports',files={'file':('broken.xlsx',b'not a zip')}).status_code == 422
     from app.core import security
     monkeypatch.setattr(security,'auth_configuration',lambda:{'configured':True,'mode':'entra'})
@@ -59,6 +72,26 @@ def test_workbook_import_roles_duplicate_revision_and_reports(api, monkeypatch):
     monkeypatch.setattr(security,'validate_token',lambda token:actor.copy())
     headers={'authorization':'Bearer test'}
     assert client.get('/api/energy/report',headers=headers,params={'day':'2026-07-04'}).status_code == 200
+    assert client.get('/api/energy/weekly',headers=headers,params={'week_start':'2026-06-29'}).status_code == 200
+    assert client.get('/api/energy/weekly',params={'week_start':'2026-06-29'}).status_code == 401
     assert client.post('/api/energy/imports',headers=headers,files=files).status_code == 403
     actor['roles']=['NOC.Operator']
     assert client.post('/api/energy/imports',headers=headers,files=files).status_code == 403
+
+
+def test_weekly_missing_import_date_validation_and_production_trial_guard(api, monkeypatch):
+    client, _ = api
+    assert client.get('/api/energy/weekly', params={'week_start': '2026-06-29'}).status_code == 404
+    assert client.get('/api/energy/weekly', params={'week_start': '2026-06-30'}).status_code == 422
+    assert client.get('/api/energy/weekly', params={'week_start': '2099-01-05'}).status_code == 422
+    response = client.get('/api/energy/weekly', params={'week_start': '2026-06-29', 'source': 'trial'})
+    assert response.status_code == 200, response.text
+    assert response.json()['mode'] == 'trial'
+    assert response.json()['sites'][0]['gridHours'] is None
+    from app.core.config import settings
+    from app.core import security
+    monkeypatch.setattr(settings, 'ENVIRONMENT', 'production')
+    monkeypatch.setattr(security, 'auth_configuration', lambda: {'configured': True, 'mode': 'entra'})
+    monkeypatch.setattr(security, 'validate_token', lambda token: {'id': 'viewer', 'verified': True, 'roles': ['NOC.Viewer']})
+    assert client.get('/api/energy/weekly', headers={'authorization': 'Bearer test'},
+                      params={'week_start': '2026-06-29', 'source': 'trial'}).status_code == 409
