@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 import sqlite3
 import subprocess
+import urllib.error
 from uuid import uuid4
 import pytest
 
@@ -87,3 +88,67 @@ def test_optional_status_upload_failure_keeps_build_evidence(tmp_path,monkeypatc
     agent.github_worker(tmp_path,tmp_path,str(token),Stop())
     assert agent.read_json(tmp_path/'github.json')['error'] is None
     assert agent.read_json(tmp_path/'github-publishing.json')['available'] is False
+
+
+def test_main_release_is_resolved_by_exact_tag_not_list_order(monkeypatch):
+    sha = 'a'*40
+    calls = []
+
+    def request(url, **kwargs):
+        calls.append(url)
+        if url.endswith('commits/main'):
+            return {'sha': sha}
+        if '/actions/' in url:
+            return {'workflow_runs': [{'head_sha': sha, 'status': 'completed', 'conclusion': 'success', 'id': 42}]}
+        if url.endswith('releases/tags/review-'+sha):
+            return {'tag_name': 'review-'+sha, 'draft': False, 'published_at': '2026-10-18T22:09:01Z'}
+        pytest.fail('The exact published main release must not depend on release-list ordering')
+
+    monkeypatch.setattr(agent, 'http_json', request)
+    value = agent.github_snapshot()
+    assert value['main_sha'] == value['release_sha'] == value['build_sha'] == sha
+    assert value['build_result'] == 'success'
+    assert len(calls) == 3
+
+
+@pytest.mark.parametrize('state', ['not_found', 'draft', 'unpublished'])
+def test_pending_main_fallback_uses_publication_time_not_list_order(monkeypatch, state):
+    sha, old, recent = 'a'*40, 'b'*40, 'c'*40
+
+    def request(url, **kwargs):
+        if url.endswith('commits/main'):
+            return {'sha': sha}
+        if '/actions/' in url:
+            return {'workflow_runs': []}
+        if '/releases/tags/' in url:
+            if state == 'not_found':
+                raise urllib.error.HTTPError(url, 404, 'Not found', {}, None)
+            return {'tag_name': 'review-'+sha, 'draft': state == 'draft',
+                    'published_at': None if state == 'unpublished' else '2026-10-18T23:00:00Z'}
+        assert url.endswith('releases?per_page=100')
+        return [
+            {'tag_name': 'review-'+old, 'draft': False, 'published_at': '2026-10-18T20:00:00Z'},
+            {'tag_name': 'review-'+recent, 'draft': False, 'published_at': '2026-10-18T22:00:00Z'},
+            {'tag_name': 'review-'+sha, 'draft': True, 'published_at': '2026-10-19T00:00:00Z'},
+            {'tag_name': 'unrelated', 'draft': False, 'published_at': '2026-10-19T00:00:00Z'},
+            {'tag_name': 'review-'+'d'*40, 'draft': False, 'published_at': 'invalid'},
+        ]
+
+    monkeypatch.setattr(agent, 'http_json', request)
+    value = agent.github_snapshot()
+    assert value['release_sha'] == recent and value['main_sha'] == sha
+    assert value['build_status'] == 'unknown'
+
+
+@pytest.mark.parametrize('status', [403, 429, 500])
+def test_release_lookup_errors_are_not_disguised_as_a_missing_release(monkeypatch, status):
+    def request(url, **kwargs):
+        if url.endswith('commits/main'):
+            return {'sha': 'a'*40}
+        if '/actions/' in url:
+            return {'workflow_runs': []}
+        raise urllib.error.HTTPError(url, status, 'Unavailable', {}, None)
+
+    monkeypatch.setattr(agent, 'http_json', request)
+    with pytest.raises(urllib.error.HTTPError):
+        agent.github_snapshot()
