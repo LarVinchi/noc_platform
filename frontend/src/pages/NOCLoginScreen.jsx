@@ -16,7 +16,6 @@ export default function NOCLoginScreen({ configuration, error, onLogin }) {
       {(failure || error) && <p role="alert" className="response-error">{failure || error}</p>}
       {configuration && !configuration.configured && <p className="response-preview">Microsoft 365 registration is pending. An administrator must configure access.</p>}
       <button onClick={enter} disabled={busy || !configuration?.configured} className="response-button primary"><ShieldCheck size={17} />{busy ? 'Opening workspace…' : preview ? 'Open local preview' : 'Sign in with Microsoft 365'}</button>
-      {import.meta.env.DEV && <a href="/demo/" className="login-demo-link">Explore the design demo · no sign-in required</a>}
       <p className="login-access-note">Authorized personnel only. Operational changes remain subject to existing permissions and audit records.</p><ThemeSelector />
     </div></section></main>;
 }
