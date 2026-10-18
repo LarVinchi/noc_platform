@@ -4,7 +4,29 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>AFL NOC Operations</title>
+    <meta name="description" content="AFL network operations workspace for incident response, infrastructure and shift coordination in Lagos." />
+    <meta name="theme-color" content="#10151d" />
+    <script>
+      (() => {
+        const media = window.matchMedia('(prefers-color-scheme: dark)');
+        let preference = 'system';
+        try { const saved = localStorage.getItem('noc.theme'); if (['light', 'dark', 'system'].includes(saved)) preference = saved; } catch {}
+        const apply = () => {
+          const theme = preference === 'system' ? (media.matches ? 'dark' : 'light') : preference;
+          document.documentElement.dataset.theme = theme;
+          document.documentElement.dataset.preference = preference;
+          document.documentElement.style.colorScheme = theme;
+          document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#10151d' : '#f5f6f8';
+          window.dispatchEvent(new Event('noc-theme-change'));
+        };
+        window.nocTheme = { set(value) { preference = value; try { localStorage.setItem('noc.theme', value); } catch {} apply(); } };
+        media.addEventListener('change', apply);
+        window.addEventListener('storage', event => { if (event.key === 'noc.theme') { preference = ['light', 'dark', 'system'].includes(event.newValue) ? event.newValue : 'system'; apply(); } });
+        apply();
+      })();
+    </script>
+    <style>html{background:#f5f6f8}html[data-theme="dark"]{background:#10151d}</style>
+    <title>AFL NOC · Operations workspace</title>
   </head>
   <body>
     <div id="root"></div>
