@@ -1,3 +1,4 @@
+"""Database-backed host telemetry API checks, collected alongside unit tests."""
 from datetime import datetime, timezone, timedelta
 from uuid import uuid4
 from pydantic import SecretStr
