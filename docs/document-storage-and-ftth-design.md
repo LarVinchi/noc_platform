@@ -1,5 +1,10 @@
 # Document storage, RAG and FTTH lifecycle investigation
 
+2026-10-18 update: the RAG repository has now been reviewed. See
+[RAG integration findings and contract](rag-integration-review.md). The investigation
+below records the original design; receiving the prototype does not activate queries,
+approval, completeness checks or model access in the NOC platform.
+
 Reviewed 2026-10-09 against the complete six-page v1 PDF, the complete v2 DOCX,
 and the current feature branch. This is a proposed design and gap investigation,
 not a claim that these capabilities are implemented.
