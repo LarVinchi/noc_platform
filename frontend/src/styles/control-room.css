@@ -17,3 +17,54 @@
 @media(max-width:1190px){.control-main-column{display:contents}.control-queue{order:1}.control-focus{order:2;position:static}.control-handover{order:3}}
 @media(max-width:767px){.control-main-column .control-note-grid{grid-template-columns:1fr}.control-main-column .control-handover h2{font-size:16px}}
 @media(prefers-reduced-motion:reduce){.control-spin{animation:none}.control-metrics>button{transition:none}.control-metrics>button:hover{transform:none}}
+
+/* UI 1.1: restrained edge illumination, with a distinct colour per metric. */
+.control-metrics > button {
+  --metric-accent: #087e99;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  background: radial-gradient(ellipse at 0% 35%, color-mix(in srgb, var(--metric-accent) 7%, transparent), transparent 65%), var(--panel);
+}
+:root[data-theme=dark] .control-metrics > button:not(.is-critical):not(.is-ownership) { --metric-accent: #5be0f0; }
+.control-metrics > button.is-critical { --metric-accent: var(--danger); }
+.control-metrics > button.is-ownership { --metric-accent: var(--warning); }
+.control-metrics > button::before {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  top: 12px;
+  bottom: 12px;
+  left: 0;
+  width: 2px;
+  border-radius: 2px;
+  background: linear-gradient(transparent, var(--metric-accent) 30%, var(--metric-accent) 70%, transparent);
+  box-shadow: 3px 0 14px color-mix(in srgb, var(--metric-accent) 22%, transparent);
+}
+.control-metrics > button::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  top: 0;
+  left: 12px;
+  right: 20%;
+  height: 1px;
+  background: linear-gradient(90deg, color-mix(in srgb, var(--metric-accent) 65%, transparent), transparent);
+}
+.control-metrics > button:hover, .control-metrics > button.is-active {
+  border-color: color-mix(in srgb, var(--metric-accent) 45%, var(--line));
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--metric-accent) 8%, transparent);
+}
+.control-metrics > button:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.control-metrics .control-metric-icon {
+  color: var(--metric-accent);
+  background: color-mix(in srgb, var(--metric-accent) 10%, var(--panel));
+}
+.control-metrics > button strong { color: var(--metric-accent); }
+.noc-shell .noc-nav-link.is-active {
+  background: #152d43;
+  color: #7fdbff;
+  box-shadow: inset 3px 0 0 #54d2fa, inset 0 0 0 1px #294c66, 0 0 16px #55d6ff0a;
+}
+.noc-shell .noc-nav-link.is-active:hover { background: #19364e; }
+.noc-shell .noc-nav-link.is-active svg { color: #7fdbff; }
