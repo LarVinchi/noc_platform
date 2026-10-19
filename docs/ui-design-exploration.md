@@ -7,7 +7,7 @@ The Gemini exports remain separate design references outside the repository.
 
 ## Scope
 
-- Navy navigation rail, cobalt accents, semantic light/dark palettes, selected
+- Navy navigation rail, cyan/light-blue accents, semantic light/dark palettes, selected
   navigation, current WAT shift clock and feed status.
 - Interactive incident metrics, severity/age-ordered queue, search, filters,
   compact/comfortable row density and a keyboard-accessible incident selector.

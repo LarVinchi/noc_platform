@@ -8,6 +8,7 @@ local UI tag does not publish a release, push code, or deploy it.
 | --- | --- |
 | `ui-v1.0.0` | Original control room design with weekly reporting refinements, bottom-aligned table actions and header counters; before edge illumination. |
 | `ui-v1.1.0` | Adds cyan/red/amber KPI edge accents and cyan selected-navigation illumination in both themes. Keeps the version 1.0.0 workflows and reporting calculations. |
+| `ui-v1.1.1` | Makes the primary palette consistently cyan/light blue, including action buttons, branding, selection backgrounds, links and focus accents. Removes remaining cobalt/periwinkle accent tokens. |
 
 The numeric portion follows MAJOR.MINOR.PATCH: a compatible design enhancement
 increments MINOR; a correction increments PATCH; an incompatible UI contract
