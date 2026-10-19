@@ -10,6 +10,7 @@ local UI tag does not publish a release, push code, or deploy it.
 | `ui-v1.1.0` | Adds cyan/red/amber KPI edge accents and cyan selected-navigation illumination in both themes. Keeps the version 1.0.0 workflows and reporting calculations. |
 | `ui-v1.1.1` | Makes the primary palette consistently cyan/light blue, including action buttons, branding, selection backgrounds, links and focus accents. Removes remaining cobalt/periwinkle accent tokens. |
 | `ui-v1.2.0` | Extends cyan styling across operational pages and adds the approved-TXT Knowledge workspace, with version review, explicit source selection and verifiable citations. Includes the disabled-by-default NOC backend integration; requires the separately reviewed RAG runtime. |
+| `ui-v1.2.1` | Aligns knowledge request timeouts with the private worker for live Gemini queries. Earlier tags remain unchanged. |
 
 The numeric portion follows MAJOR.MINOR.PATCH: a compatible design enhancement
 increments MINOR; a correction increments PATCH; an incompatible UI contract

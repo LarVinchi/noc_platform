@@ -53,7 +53,8 @@ def request(path, payload=None):
         data=json.dumps(payload).encode() if payload is not None else None,
         headers={'Authorization': 'Bearer '+settings.KNOWLEDGE_SERVICE_TOKEN.get_secret_value(),
                  'Content-Type': 'application/json'})
-    with urllib.request.build_opener(NoRedirect()).open(req, timeout=5 if path.startswith('/health/') else 40) as response:
+    timeout = 5 if path.startswith('/health/') else 75 if path == '/v1/query' else 40
+    with urllib.request.build_opener(NoRedirect()).open(req, timeout=timeout) as response:
         data = response.read(131073)
     if len(data) > 131072:
         raise ValueError('Worker response exceeds limits')

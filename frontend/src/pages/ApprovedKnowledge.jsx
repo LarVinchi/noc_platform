@@ -51,7 +51,7 @@ export default function ApprovedKnowledge({ identity }) {
     const version = ++epoch.current, asked = question.trim();
     setBusy(true); setError(''); setAnswer(null);
     try {
-      const { data } = await api.post('/knowledge/query', { question: asked, document_ids: selected }, { signal: controller.signal, timeout: 45000 });
+      const { data } = await api.post('/knowledge/query', { question: asked, document_ids: selected }, { signal: controller.signal, timeout: 90000 });
       if (version === epoch.current) setAnswer({ ...data, question: asked });
     } catch (value) { if (!controller.signal.aborted && version === epoch.current) setError(operationError(value)); }
     finally { if (version === epoch.current) setBusy(false); }

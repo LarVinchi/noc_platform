@@ -35,6 +35,8 @@ change discards the answer. The worker also rechecks its durable registry before
 and after retrieval/generation. It filters exact source versions before ranking.
 
 Worker responses have bounded size and validated request/citation identities.
+The query budgets are nested: Gemini transport 60 seconds, NOC worker call 75
+seconds and browser call 90 seconds; the local preview proxy allows 95 seconds.
 Invalid citations, provider timeouts/quotas and blocked/truncated JSON responses
 produce an explicit unavailable state rather than a fabricated answer. Minimal
 audit events store actor, source versions, result and model/index identity, but not
