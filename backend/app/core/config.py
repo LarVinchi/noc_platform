@@ -17,6 +17,9 @@ class Settings(BaseSettings):
     PLATFORM_WARNING_PERCENT: float = Field(default=80, ge=1, le=99)
     PLATFORM_CRITICAL_PERCENT: float = Field(default=90, ge=1, le=100)
     DOCUMENT_STORAGE_ROOT: str = "private_documents"
+    KNOWLEDGE_ENABLED: bool = False
+    KNOWLEDGE_SERVICE_URL: str = ""
+    KNOWLEDGE_SERVICE_TOKEN: SecretStr = SecretStr("")
     ENERGY_FILE_PUSH_ENABLED: bool = False
     ENERGY_FILE_PUSH_SOURCE_ID: str = "site-energy"
     ENERGY_FILE_PUSH_INTERVAL_SECONDS: int = Field(default=3600, ge=60, le=86400)

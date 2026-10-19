@@ -89,7 +89,8 @@ def authenticate(headers, method, path):
     admin_write = any(path.startswith(prefix) for prefix in ("/api/monitoring/mappings", "/api/operations/engineers", "/api/operations/policies")) and method not in {"GET", "HEAD", "OPTIONS"}
     if (path.startswith("/api/audit") or path.startswith('/api/platform-health') or admin_write) and "NOC.Admin" not in roles:
         raise HTTPException(403, "Administrator role required")
-    if method not in {"GET", "HEAD", "OPTIONS"} and not roles.intersection({"NOC.Operator", "NOC.Admin"}):
+    read_query = method == 'POST' and path == '/api/knowledge/query'
+    if method not in {"GET", "HEAD", "OPTIONS"} and not read_query and not roles.intersection({"NOC.Operator", "NOC.Admin"}):
         raise HTTPException(403, "Operator role required")
     return actor
 

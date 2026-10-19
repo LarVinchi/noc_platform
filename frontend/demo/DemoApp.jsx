@@ -6,6 +6,8 @@ import NocRoutes from '../src/components/NocRoutes';
 import ThemeSelector from '../src/components/ThemeSelector';
 import { SCENARIOS, changeScenario, currentScenario, forgetOpened, openDemoSession } from './session.js';
 
+const localRag = import.meta.env.VITE_RAG_LOCAL_PREVIEW === 'true';
+
 function ScenarioPicker() {
   return <label className="demo-scenario">
     <span>Scenario</span>
@@ -17,8 +19,8 @@ function ScenarioPicker() {
 
 function DemoBanner({ onExit }) {
   return <div className="demo-banner" role="status" aria-label="Design preview notice">
-    <span className="demo-badge"><FlaskConical size={13} aria-hidden="true" />DEMO</span>
-    <p>Synthetic data · read-only design preview · nothing is saved and no backend is connected</p>
+    <span className="demo-badge"><FlaskConical size={13} aria-hidden="true" />{localRag ? 'LOCAL RAG TEST' : 'DEMO'}</span>
+    <p>{localRag ? 'Isolated local documents are saved · approved evidence is sent to Gemini when you ask · other pages use synthetic fixtures' : 'Synthetic data · read-only design preview · nothing is saved and no backend is connected'}</p>
     <div className="demo-banner-actions">
       <ScenarioPicker />
       {onExit && <button type="button" onClick={onExit}><LogOut size={13} aria-hidden="true" />Exit preview</button>}
@@ -37,12 +39,12 @@ function DemoGate({ onOpen }) {
     <section className="demo-gate-card" aria-labelledby="demo-gate-title">
       <div className="demo-gate-brand"><span className="noc-brand-mark"><Network size={20} /></span>AFL NOC</div>
       <h1 id="demo-gate-title">Design preview</h1>
-      <p>Explore the redesigned workspace with synthetic, contract-shaped sample data. Microsoft sign-in is not used here, and the real application is unchanged.</p>
+      <p>{localRag ? 'Test document upload, explicit approval and Gemini questions against a local SQLite catalogue. This is an unverified local administrator session. Use only approved non-sensitive test material.' : 'Explore the redesigned workspace with synthetic, contract-shaped sample data. Microsoft sign-in is not used here, and the real application is unchanged.'}</p>
       <dl className="demo-identity">
         <div><dt>Identity</dt><dd>DEMO · Synthetic NOC Admin</dd></div>
         <div><dt>Role</dt><dd>NOC.Admin</dd></div>
         <div><dt>Verification</dt><dd>Unverified · synthetic</dd></div>
-        <div><dt>Writes</dt><dd>Rejected · read-only fixtures</dd></div>
+        <div><dt>Writes</dt><dd>{localRag ? 'Local documents and knowledge only · no production data' : 'Rejected · read-only fixtures'}</dd></div>
       </dl>
       {failure && <p role="alert" className="response-error">{failure}</p>}
       <button type="button" className="response-button primary" onClick={open} disabled={busy}>{busy ? 'Opening preview…' : 'Open design preview'}</button>

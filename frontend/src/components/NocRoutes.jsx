@@ -12,10 +12,11 @@ import ResponseCenter from '../pages/ResponseCenter';
 import Documents from '../pages/Documents';
 import FtthOperations from '../pages/FtthOperations';
 import MailTriage from '../pages/MailTriage';
-import Knowledge from '../pages/Knowledge';
+import ApprovedKnowledge from '../pages/ApprovedKnowledge';
 import EnergyOperations from '../pages/EnergyOperations';
 import ServerHealth from '../pages/ServerHealth';
 import { EmptyState } from './WorkspaceUI';
+import '../styles/operational-pages.css';
 
 export default function NocRoutes({ identity }) {
   return <Routes>
@@ -30,7 +31,7 @@ export default function NocRoutes({ identity }) {
     <Route path="/documents" element={<Documents identity={identity} />} />
     <Route path="/ftth-operations" element={<FtthOperations identity={identity} />} />
     <Route path="/mail" element={<MailTriage identity={identity} />} />
-    <Route path="/knowledge" element={<Knowledge />} />
+    <Route path="/knowledge" element={<ApprovedKnowledge identity={identity} />} />
     <Route path="/audit" element={<AuditHistory />} />
     <Route path="/energy" element={<EnergyOperations identity={identity} />} />
     <Route path="/server-health" element={<ServerHealth identity={identity} />} />

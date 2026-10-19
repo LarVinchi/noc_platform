@@ -99,10 +99,10 @@ function documents(scenario) {
 
 function mailItems(scenario) {
   const items = scenario === 'empty' ? [] : [
-    { item_id: 'demo-mail-1', subject: 'Synthetic: Customer reports no internet', sender: 'customer@demo.invalid', excerpt: 'Sample excerpt. Our office link has been down since morning…', received_at: minutes(55), entered_at: minutes(50), state: 'needs_review', incident_id: null, order_id: null, reviewed_at: null, reviewed_by: null, action_note: null, classification: { category: 'customer_fault', priority: 'high', references: ['FN-DEMO-0305'], rule_version: 'demo-1', signals: ['no internet', 'down since'] } },
-    { item_id: 'demo-mail-2', subject: 'Synthetic: Vendor maintenance notice', sender: 'vendor@demo.invalid', excerpt: 'Sample excerpt. Planned works on the upstream circuit…', received_at: minutes(400), entered_at: minutes(395), state: 'reviewed', incident_id: null, order_id: null, reviewed_at: minutes(380), reviewed_by: DEMO_IDENTITY.id, action_note: 'Logged as planned activity (sample).', classification: { category: 'maintenance', priority: 'normal', references: [], rule_version: 'demo-1', signals: ['planned works'] } },
+    { item_id: 'demo-mail-1', subject: 'Synthetic: Customer reports no internet', sender: 'customer@demo.invalid', excerpt: 'Sample excerpt. Our office link has been down since morning…', received_at: minutes(55), entered_at: minutes(50), state: 'needs_review', incident_id: null, order_id: null, reviewed_at: null, reviewed_by: null, action_note: null, classification: { category: 'customer_fault', priority: 'high', references: { fn_numbers: ['FN-DEMO-0305'] }, rule_version: 'demo-1', signals: [{ reason: 'Synthetic service-impact phrase', matched: 'no internet' }] } },
+    { item_id: 'demo-mail-2', subject: 'Synthetic: Vendor maintenance notice', sender: 'vendor@demo.invalid', excerpt: 'Sample excerpt. Planned works on the upstream circuit…', received_at: minutes(400), entered_at: minutes(395), state: 'acknowledged', incident_id: null, order_id: null, reviewed_at: minutes(380), reviewed_by: DEMO_IDENTITY.id, action_note: 'Logged as planned activity (sample).', classification: { category: 'maintenance', priority: 'normal', references: {}, rule_version: 'demo-1', signals: [{ reason: 'Synthetic maintenance phrase', matched: 'planned works' }] } },
   ];
-  return { items, total: items.length, counts: { needs_review: scenario === 'empty' ? 0 : 1, reviewed: scenario === 'empty' ? 0 : 1, dismissed: 0 } };
+  return { items, total: items.length, counts: { needs_review: scenario === 'empty' ? 0 : 1, acknowledged: scenario === 'empty' ? 0 : 1, dismissed: 0 } };
 }
 
 function energyStatus(stale) {
@@ -117,6 +117,7 @@ const emptyEnergy = day => ({ date: day, start: `${day}T00:00:00+01:00`, end: `$
 const list = (scenario, rows) => (scenario === 'empty' ? [] : rows);
 
 export function resolveFixture(method, path, query, scenario) {
+  if (method === 'GET' && path === '/knowledge/sources') return { status: 200, body: { items: documents(scenario).items.map(d => ({ document_id: d.document_id, title: d.title, version: { document_id: d.document_id, version_id: d.latest_version.version_id, sha256: d.latest_version.sha256 }, revision: d.latest_version.revision, filename: d.latest_version.original_filename, supported: false, approved: false })), limit: 100 } };
   const stale = scenario === 'stale';
   if (path === '/auth/config') return { status: 200, body: DEMO_AUTH_CONFIG };
   if (path === '/auth/me') return { status: 200, body: DEMO_IDENTITY };
@@ -149,7 +150,7 @@ export function resolveFixture(method, path, query, scenario) {
     [/^\/topology\/maps$/, () => []],
     [/^\/documents$/, () => documents(scenario)],
     [/^\/documents\/([^/]+)$/, ([id]) => { const record = documents('live').items.find(row => row.document_id === id); return record ? { ...record, versions: [record.latest_version] } : null; }],
-    [/^\/knowledge\/status$/, () => ({ indexed_sources: 0, connected: false })],
+    [/^\/knowledge\/status$/, () => ({ indexed_sources: 0, approved_sources: 0, rag_connected: false, query_available: false, approval_available: false })],
     [/^\/mail\/connection$/, () => ({ connected: false, mode: 'unavailable', mailbox: null, last_sync_at: null, rag_connected: false, retention_automation: false, requirements: ['Design preview: no mailbox is connected'] })],
     [/^\/mail\/items$/, () => mailItems(scenario)],
     [/^\/ftth\/reports$/, () => (scenario === 'empty'

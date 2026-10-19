@@ -1,0 +1,17 @@
+/* Shared page treatment. Report canvases and map layers keep their own palettes. */
+.noc-content .response-page-heading{padding-bottom:20px;border-bottom:1px solid var(--line)}
+.noc-content .response-page-heading h1{font-size:29px;line-height:1.25;letter-spacing:-.8px;color:var(--text)}
+.noc-content .response-page-heading .eyebrow{color:var(--subtle);font-size:10px;letter-spacing:.1em}
+.noc-content .response-page-heading p{max-width:740px;line-height:1.8;color:var(--muted)}
+.noc-content .response-panel{border-color:var(--line);box-shadow:0 2px 10px #071c2b05;border-radius:10px}
+.noc-content .response-button{min-height:35px;transition:background .15s,border-color .15s;color:var(--accent)}
+.noc-content .response-button.primary{background:var(--primary);color:var(--on-primary);border-color:var(--primary)}
+.noc-content .response-button.primary:hover:not(:disabled){background:#066d94;border-color:#066d94}
+.noc-content .response-button:focus-visible,.noc-content input:focus-visible,.noc-content select:focus-visible,.noc-content textarea:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.noc-content .response-cards>.noc-stat,.noc-content .energy-cards>.noc-stat,.noc-content .host-metric{position:relative;border:1px solid var(--line);border-radius:10px;box-shadow:inset 2px 0 0 color-mix(in srgb,var(--accent) 50%,transparent);background:linear-gradient(110deg,color-mix(in srgb,var(--accent) 4%,var(--panel)),var(--panel) 60%)}
+.noc-content .response-cards>.noc-stat strong,.noc-content .host-metric strong{font-variant-numeric:tabular-nums}
+.noc-content .response-table thead th,.noc-content .host-table thead th{background:var(--raised);font-size:10px;text-transform:uppercase;letter-spacing:.045em;color:var(--muted)}
+.noc-content .response-table tbody tr:hover,.noc-content .host-table tbody tr:hover{background:var(--hover)}
+.noc-content .response-toolbar{border-radius:9px}
+@media(max-width:767px){.noc-content .response-page-heading h1{font-size:25px}.noc-content .response-page-heading{padding-bottom:16px}}
+@media(prefers-reduced-motion:reduce){.noc-content .response-button{transition:none}}
