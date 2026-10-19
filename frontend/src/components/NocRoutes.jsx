@@ -4,6 +4,8 @@ import NetworkTopology from '../pages/NetworkTopology';
 import FTTHProvisioning from '../pages/FTTHProvisioning';
 import IncidentManagement from '../pages/IncidentManagement';
 import OperationsDashboard from '../pages/OperationsDashboard';
+import ControlRoomOverview from '../pages/ControlRoomOverview';
+import ShiftActivityLog from './ShiftActivityLog';
 import AuditHistory from '../pages/AuditHistory';
 import Monitoring from '../pages/Monitoring';
 import ResponseCenter from '../pages/ResponseCenter';
@@ -17,7 +19,9 @@ import { EmptyState } from './WorkspaceUI';
 
 export default function NocRoutes({ identity }) {
   return <Routes>
-    <Route path="/" element={<OperationsDashboard />} />
+    <Route path="/" element={<ControlRoomOverview />} />
+    <Route path="/design/v0" element={<OperationsDashboard />} />
+    <Route path="/handover" element={<div className="handover-workspace"><ShiftActivityLog /></div>} />
     <Route path="/crm" element={<CrmServices identity={identity} />} />
     <Route path="/topology" element={<NetworkTopology />} />
     <Route path="/provisioning" element={<FTTHProvisioning identity={identity} />} />

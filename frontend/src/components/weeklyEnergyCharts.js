@@ -6,6 +6,21 @@ export function weeklyFields(site, kind) {
     : { hours: 'genHours', usage: 'dieselUsed', average: 'averageGenHours', usageAverage: 'averageDieselUsed', unit: 'L', name: 'Generator runtime', partial: site.genPartial, usagePartial: site.dieselUsagePartial, measured: site.fuel === 'Diesel' };
 }
 
+export function weeklyAverage(site, kind) {
+  const field = weeklyFields(site, kind), value = site[field.average];
+  return `${weeklyNumber(value)}${value != null && field.partial ? '*' : ''}`;
+}
+
+export function weeklyCoverageNote(report, site, kind) {
+  const field = weeklyFields(site, kind);
+  if (!report.elapsed) return 'Week in progress: full-week averages are withheld.';
+  if (site[field.average] == null) return 'Hours average requires seven recorded days. Missing days are not zero.';
+  const hours = field.partial
+    ? '* Provisional hours average = logged total / 7; unresolved intervals are excluded.'
+    : 'Hours average = logged total / 7 recorded days.';
+  return hours + (field.measured && field.usagePartial ? ' Consumption average awaits complete readings.' : '');
+}
+
 export function weeklyDetails(report, site, kind) {
   const field = weeklyFields(site, kind);
   const details = kind === 'grid'
@@ -13,7 +28,7 @@ export function weeklyDetails(report, site, kind) {
     : [[site.generatorCapacitySource ? 'Generator capacity (template)' : 'Generator capacity', site.generatorCapacity || 'Not recorded'], ['Fuel', site.fuel]];
   details.push(['Reporting period', `${weeklyDate(report.weekStart)} – ${weeklyDate(report.weekEnd)} ${report.weekEnd.slice(0, 4)}`],
     [kind === 'grid' ? 'Total availability' : 'Total runtime', `${weeklyNumber(site[field.hours])} hrs${field.partial ? ' · partial' : ''}`],
-    ['Daily average', `${weeklyNumber(site[field.average])} hrs/day`]);
+    ['Daily average (logged)', `${weeklyAverage(site, kind)} hrs/day`]);
   if (field.measured) details.push([kind === 'grid' ? 'Total EKEDC used' : 'Total diesel used', `${weeklyNumber(site[field.usage])} ${field.unit}${field.usagePartial ? ' · partial' : ''}`]);
   else if (kind === 'gen') details.push(['Consumption', 'Gas usage not tracked']);
   return details;
@@ -66,11 +81,12 @@ export function drawWeeklyChart(canvas, report, site, kind, theme) {
       prior = point;
     });
   }
-  const total = weeklyNumber(site[field.hours]), average = weeklyNumber(site[field.average]);
+  const total = weeklyNumber(site[field.hours]), average = weeklyAverage(site, kind);
   text(`Logged total: ${total} hrs    Daily average: ${average} hrs`, 40, 562, 18, color.ink, 600);
   if (field.measured) text(`Usage: ${weeklyNumber(site[field.usage])} ${field.unit}${field.usagePartial ? ' · partial measured total' : ''}`, 40, 592, 16, color.muted);
   else if (kind === 'gen') text('Gas consumption is not tracked.', 40, 592, 16, color.muted);
-  text(field.partial ? 'PARTIAL WEEK / MISSING RECORDS · averages require seven recorded days and an elapsed week.' : 'Seven daily values · average = total ÷ 7 · source availability is not equipment uptime.', 40, 626, 13, color.muted);
+  ctx.font = '400 13px Arial'; ctx.fillStyle = color.muted; ctx.textAlign = 'left';
+  ctx.fillText(weeklyCoverageNote(report, site, kind), 40, 626, 1120);
 }
 
 export function drawWeeklyTable(ctx, report, site, kind, theme, top = 650) {
@@ -88,7 +104,7 @@ export function drawWeeklyTable(ctx, report, site, kind, theme, top = 650) {
   rows.forEach(([label, hours, used], i) => {
     const yy = headerY + 40 + i * 36;
     if (i >= 7) { ctx.fillStyle = dark ? '#1b3040' : '#eaf0f4'; ctx.fillRect(40, yy, 720, 36); }
-    text(label, 58, yy + 25, i >= 7); text(weeklyNumber(hours), field.measured ? 460 : 738, yy + 25, i >= 7, 'right');
+    text(label, 58, yy + 25, i >= 7); text(i === 8 ? weeklyAverage(site, kind) : weeklyNumber(hours), field.measured ? 460 : 738, yy + 25, i >= 7, 'right');
     if (field.measured) text(weeklyNumber(theme === 'excel' && used ? -used : used), 738, yy + 25, i >= 7, 'right');
     ctx.strokeStyle = dark ? '#304655' : '#dce6eb'; ctx.beginPath(); ctx.moveTo(40, yy + 36); ctx.lineTo(760, yy + 36); ctx.stroke();
   });
@@ -100,7 +116,7 @@ export function drawWeeklyTable(ctx, report, site, kind, theme, top = 650) {
   });
   ctx.fillStyle = muted; ctx.font = '14px Arial'; ctx.textAlign = 'left';
   ctx.fillText(`Source: ${report.source} · ${report.mode === 'trial' ? 'COLLECTOR TRIAL' : 'Workbook copy'} · missing values are not zero`, 40, top + 449);
-  ctx.fillText(field.measured && field.usagePartial ? '* Usage is partial or unavailable; daily averages are withheld pending complete readings.' : 'Unrounded daily values are summed before final rounding. Batteries are present at all sites.', 40, top + 477);
+  ctx.fillText(weeklyCoverageNote(report, site, kind), 40, top + 477, 1120);
 }
 
 export function weeklyImage(report, site, kind, theme, part = 'combined') {

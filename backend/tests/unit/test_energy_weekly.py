@@ -59,6 +59,30 @@ class WeeklyTests(unittest.TestCase):
             self.assertIsNone(site['gridHours'])
             self.assertIsNone(site['dieselUsed'])
 
+    def test_open_record_preserves_provisional_seven_day_logged_average(self):
+        rows = records()
+        rows.append({**rows[-1], 'row': 100, 'stop': None})
+        site = self.report(rows)['sites'][0]
+        self.assertEqual(site['averageGridHours'], 18)
+        self.assertEqual(site['averageGenHours'], 6)
+        self.assertTrue(site['gridPartial'])
+        self.assertTrue(site['genPartial'])
+        self.assertIsNone(site['gridAvailabilityPercent'])
+        self.assertIsNone(site['averageDieselUsed'])
+
+    def test_no_completed_generator_runs_average_to_zero_on_recorded_days(self):
+        rows = [r for r in records() if r['kind'] == 'grid']
+        site = self.report(rows)['sites'][0]
+        self.assertEqual(site['averageGenHours'], 0)
+        self.assertEqual(site['averageGridHours'], 18)
+
+    def test_open_record_does_not_fill_a_missing_day(self):
+        rows = records()[:-2]
+        rows.append({**records()[-2], 'stop': None})
+        site = self.report(rows)['sites'][0]
+        self.assertIsNone(site['averageGridHours'])
+        self.assertIsNone(site['averageGenHours'])
+
     def test_monday_required(self):
         with self.assertRaises(ValueError):
             weekly_report([], '2026-10-06')

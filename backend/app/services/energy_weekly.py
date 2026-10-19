@@ -51,7 +51,10 @@ def weekly_report(records, week_start, now=None):
         issues = [issue for row in rows for issue in row['issues']]
         overlap = any('Overlapping' in issue['message'] for issue in issues)
         invalid = any('Stop precedes' in issue['message'] or 'Open record' in issue['message'] for issue in issues)
-        grid_average = average('gridHours', grid_complete and not invalid)
+        # Logged-hour averages describe the completed intervals we can sum.
+        # An unresolved record makes these provisional, but does not erase
+        # seven recorded daily values. Never substitute zero for a missing day.
+        grid_average = average('gridHours', grid_complete)
         gen_total, diesel_total = total('genHours'), total('dieselUsed')
         meters = sorted({r['source'].rsplit('-', 1)[-1] for r in records
                          if r['site'] == site and r['kind'] == 'grid' and r.get('source', '').rsplit('-', 1)[-1].isdigit()})
@@ -61,10 +64,10 @@ def weekly_report(records, week_start, now=None):
                                'days': rows, 'gridHours': total('gridHours'), 'genHours': gen_total,
                                'gridUsed': total('gridUsed'), 'dieselUsed': diesel_total,
                                'averageGridHours': grid_average,
-                               'averageGenHours': average('genHours', gen_complete and not invalid),
+                               'averageGenHours': average('genHours', gen_complete),
                                'averageGridUsed': average('gridUsed', grid_usage_complete and not overlap and not invalid),
                                'averageDieselUsed': average('dieselUsed', diesel_complete and not overlap and not invalid),
-                               'gridAvailabilityPercent': grid_average / 24 * 100 if grid_average is not None else None,
+                               'gridAvailabilityPercent': grid_average / 24 * 100 if grid_average is not None and not invalid else None,
                                'dieselLitresPerHour': diesel_total / gen_total if diesel_complete and not overlap and not invalid and gen_total else None,
                                'gridPartial': not grid_complete or not elapsed or invalid,
                                'genPartial': not gen_complete or not elapsed or invalid,
