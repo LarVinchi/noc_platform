@@ -20,7 +20,7 @@ function ScenarioPicker() {
 function DemoBanner({ onExit }) {
   return <div className="demo-banner" role="status" aria-label="Design preview notice">
     <span className="demo-badge"><FlaskConical size={13} aria-hidden="true" />{localRag ? 'LOCAL RAG TEST' : 'DEMO'}</span>
-    <p>{localRag ? 'Isolated local documents are saved · approved evidence is sent to Gemini when you ask · other pages use synthetic fixtures' : 'Synthetic data · read-only design preview · nothing is saved and no backend is connected'}</p>
+    <p>{localRag ? 'Isolated local documents are saved · Gemini receives approved text during vector indexing and questions · other pages use synthetic fixtures' : 'Synthetic data · read-only design preview · nothing is saved and no backend is connected'}</p>
     <div className="demo-banner-actions">
       <ScenarioPicker />
       {onExit && <button type="button" onClick={onExit}><LogOut size={13} aria-hidden="true" />Exit preview</button>}

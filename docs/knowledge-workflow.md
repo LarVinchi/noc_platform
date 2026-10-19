@@ -1,14 +1,26 @@
 # Approved-source knowledge workflow
 
-The first connected slice is a stateless question against explicitly selected,
-approved UTF-8 TXT revisions. It uses persistent lexical retrieval and a private
-Gemini REST adapter. It does not enable case-aware generation in the floating
-assistant, RCA drafts, vector search, PDF/DOCX extraction, or automatic actions.
+The connected workflow is a stateless question against explicitly selected,
+approved UTF-8 TXT or text-based PDF revisions. The private worker supports
+lexical retrieval or explicitly configured persistent Chroma/Gemini embeddings.
+Knowledge displays the actual worker index identity. It does not enable case-aware
+generation in the floating assistant, RCA drafts, DOCX extraction or automatic actions.
+
+PDFs are limited to 5 MB and 100 text-bearing pages, with original-byte hashes and
+page/line citations. Scanned, encrypted, partially blank or oversized PDFs fail
+approval rather than silently omitting pages. The pilot parser still requires
+process isolation and resource limits before accepting arbitrary public files.
+Worker installations need `requirements-noc-vectors.txt` for PDF/vector support.
+
+The separate collector inventories explicitly approved folders on the Windows PC
+that syncs OneDrive. It does not move files, set NOC access or auto-publish scanned
+documents. Collector upload, ACL mapping and automated extraction jobs are a later
+integration stage; no direct Microsoft Graph document connector is active.
 
 ## User workflow
 
-1. Upload a non-sensitive TXT runbook under Documents (maximum 200 KB; lines at
-   most 2800 characters). Inspect its original content and current revision.
+1. Upload a non-sensitive TXT runbook (maximum 200 KB; lines at most 2800 characters)
+   or text-based PDF (maximum 5 MB). Inspect its original content and current revision.
 2. In Knowledge, an administrator selects **Review / approve**, records the
    decision reason, and approves that exact immutable revision. Merely writing
    APPROVED inside a file does not grant knowledge approval.
@@ -19,6 +31,10 @@ assistant, RCA drafts, vector search, PDF/DOCX extraction, or automatic actions.
 5. An unrelated question should abstain. Revoke the source and confirm it cannot
    be queried. A newly uploaded revision requires its own approval; an older
    approved revision does not authorize the new content.
+6. After changing the worker retrieval backend or embedding model/dimensions,
+   use **Reindex** for previously approved revisions. Existing lexical approval
+   does not create vectors. Failed indexing retains the previous working generation.
+   Indexing with Gemini embeddings sends the approved source chunks to that provider.
 
 ## Authorization and failure behavior
 
@@ -35,8 +51,10 @@ change discards the answer. The worker also rechecks its durable registry before
 and after retrieval/generation. It filters exact source versions before ranking.
 
 Worker responses have bounded size and validated request/citation identities.
-The query budgets are nested: Gemini transport 60 seconds, NOC worker call 75
-seconds and browser call 90 seconds; the local preview proxy allows 95 seconds.
+The query budgets cover embedding (30 seconds) plus generation (60 seconds):
+NOC worker call 105 seconds, frontend proxy 110 seconds, gateway/local preview
+proxy 115 seconds and browser call 120 seconds. Other API routes retain their
+existing proxy timeouts.
 Invalid citations, provider timeouts/quotas and blocked/truncated JSON responses
 produce an explicit unavailable state rather than a fabricated answer. Minimal
 audit events store actor, source versions, result and model/index identity, but not

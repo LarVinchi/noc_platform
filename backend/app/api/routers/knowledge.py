@@ -1,5 +1,6 @@
 """Opt-in, version-approved knowledge workflow; NOC owns user authorization."""
 import datetime as dt
+import base64
 from uuid import UUID, uuid4
 from typing import Literal
 from fastapi import APIRouter, Depends, HTTPException
@@ -45,9 +46,12 @@ def audit(db, kind, sources, note=None, request_id=None, model=None, index_versi
 @router.get('/status')
 def status(db: Session = Depends(get_db)):
     connected = False
+    index_kind = 'unavailable'
     if worker.configured():
         try:
-            connected = worker.request('/health/ready').get('adapters_configured') is True
+            ready = worker.request('/health/ready')
+            connected = ready.get('adapters_configured') is True
+            index_kind = ready.get('index_version', 'unspecified')
         except Exception:
             pass
     rows = catalogue(db).all()
@@ -57,8 +61,8 @@ def status(db: Session = Depends(get_db)):
         'draft_generation_available': False, 'case_query_available': False,
         'indexed_sources': approved, 'approved_sources': approved,
         'accessible_catalogue_documents': access(db.query(Document)).count(),
-        'source_mode': 'approved_txt_lexical_v1' if settings.KNOWLEDGE_ENABLED else 'catalogue_metadata_only',
-        'provider_probed': False, 'requirements': ['Approved UTF-8 TXT source', 'Configured private Gemini worker',
+        'source_mode': index_kind if settings.KNOWLEDGE_ENABLED else 'catalogue_metadata_only',
+        'provider_probed': False, 'requirements': ['Approved UTF-8 TXT or text-based PDF source', 'Configured private Gemini worker',
             'Live citation and answer-quality evaluation before operational use']}
 
 
@@ -67,7 +71,7 @@ def sources(db: Session = Depends(get_db)):
     rows = catalogue(db).order_by(Document.created_at.desc()).limit(100).all()
     return {'items': [{'document_id': d.document_id, 'title': d.title, 'version': identity(v),
         'revision': v.revision, 'filename': v.original_filename,
-        'supported': v.media_type == 'text/plain' and v.byte_size <= 200000,
+        'supported': (v.media_type == 'text/plain' and v.byte_size <= 200000) or (v.media_type == 'application/pdf' and v.byte_size <= 5000000),
         'approved': bool(a and a.approved), 'reviewed_by': a.reviewed_by if a else None,
         'reviewed_at': a.reviewed_at if a else None} for d,v,a in rows], 'limit': 100}
 
@@ -111,16 +115,22 @@ def review(version_id: UUID, data: Review, db: Session = Depends(get_db)):
         except Exception:
             return {'approved': False, 'worker_notified': False}
         return {'approved': False, 'worker_notified': True}
-    if version.media_type != 'text/plain' or version.byte_size > 200000:
-        raise HTTPException(422, 'This first workflow supports UTF-8 TXT sources up to 200 KB')
+    if not ((version.media_type == 'text/plain' and version.byte_size <= 200000)
+            or (version.media_type == 'application/pdf' and version.byte_size <= 5000000)):
+        raise HTTPException(422, 'Supports UTF-8 TXT up to 200 KB or text-based PDF up to 5 MB')
+    original = storage.verified_path(version).read_bytes()
+    if version.media_type == 'application/pdf':
+        payload = {'source': source, 'pdf_base64': base64.b64encode(original).decode('ascii')}
+    else:
+        try:
+            content = original.decode('utf-8')
+        except UnicodeDecodeError:
+            raise HTTPException(422, 'The source must contain valid UTF-8 text') from None
+        if any(len(line) > 2800 for line in content.splitlines()):
+            raise HTTPException(422, 'Wrap source lines to at most 2800 characters before approving')
+        payload = {'source': source, 'content': content}
     try:
-        content = storage.verified_path(version).read_bytes().decode('utf-8')
-    except UnicodeDecodeError:
-        raise HTTPException(422, 'The source must contain valid UTF-8 text') from None
-    if any(len(line) > 2800 for line in content.splitlines()):
-        raise HTTPException(422, 'Wrap source lines to at most 2800 characters before approving')
-    try:
-        indexed = worker.request('/v1/sources/index', {'source': source, 'content': content})
+        indexed = worker.request('/v1/sources/index', payload)
         if indexed.get('indexed') is not True or indexed.get('source') != source:
             raise ValueError('Index identity mismatch')
     except Exception:

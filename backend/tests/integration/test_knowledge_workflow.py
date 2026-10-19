@@ -4,6 +4,8 @@ os.environ.setdefault('POSTGRES_PASSWORD','unit-test-unused')
 import datetime as dt
 import hashlib
 import copy
+import base64
+import io
 from uuid import UUID, uuid4
 import pytest
 from fastapi import FastAPI
@@ -47,7 +49,8 @@ def api(tmp_path,monkeypatch):
         calls.append((path,payload))
         if path == '/health/ready': return {'adapters_configured':True}
         if path == '/v1/sources/index':
-            assert hashlib.sha256(payload['content'].encode()).hexdigest() == payload['source']['sha256']
+            raw = payload['content'].encode() if 'content' in payload else base64.b64decode(payload['pdf_base64'])
+            assert hashlib.sha256(raw).hexdigest() == payload['source']['sha256']
             index[payload['source']['version_id']] = payload
             return {'indexed':True,'source':payload['source']}
         if path == '/v1/sources/revoke':
@@ -82,6 +85,22 @@ def upload(client):
 def approve(client,record):
     return client.post('/api/knowledge/versions/'+record['latest_version']['version_id']+'/review',
         json={'action':'approve','note':'Reviewed this synthetic procedure for the isolated test'})
+
+
+def test_pdf_review_sends_original_bytes_and_exact_version(api):
+    from pypdf import PdfWriter
+    client,actor,calls,db = api
+    writer=PdfWriter(); writer.add_blank_page(width=300,height=300)
+    output=io.BytesIO(); writer.write(output); raw=output.getvalue()
+    result=client.post('/api/documents',data={'title':'Synthetic PDF','document_type':'knowledge','note':'Synthetic parser contract'},
+        files={'file':('procedure.pdf',raw,'application/pdf')})
+    assert result.status_code==200,result.text
+    record=result.json()
+    assert client.get('/api/knowledge/sources').json()['items'][0]['supported']
+    assert approve(client,record).status_code==200
+    indexed=[payload for path,payload in calls if path=='/v1/sources/index'][-1]
+    assert base64.b64decode(indexed['pdf_base64'])==raw
+    assert indexed['source']['sha256']==hashlib.sha256(raw).hexdigest()
 
 
 def test_approved_workflow_exact_revision_and_revoke(api):
