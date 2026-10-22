@@ -92,7 +92,8 @@ def test_weekly_missing_import_date_validation_and_production_trial_guard(api, m
     site = response.json()['sites'][0]
     assert site['gridHours'] == 0
     assert site['averageGridHours'] == 0
-    assert site['gridPartial']
+    assert site['zeroDays'] == 7
+    assert site['daysWithRecords'] == 0
     from app.core.config import settings
     from app.core import security
     monkeypatch.setattr(settings, 'ENVIRONMENT', 'production')
