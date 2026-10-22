@@ -45,6 +45,8 @@ Smoothing does not overshoot neighbouring daily values or connect missing days.
 There is no separate consumption chart or consumption-total caption underneath.
 Excel appearance retains blue `#5B9BD5`, orange `#ED7D31`, black background and white
 labels. The daily Excel template keeps its single baseline with no gridlines.
+The weekly Excel consumption axis is inverted: zero is at the bottom and larger
+negative balance changes are higher up. The orange curve follows that scale.
 
 Copy or download charts and tables independently, or download the entire report.
 Chart images are 2400 × 1300; table images are 2400 × 1000 and include a side
