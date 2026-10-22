@@ -1,42 +1,79 @@
-// Separate runtime and quantity bands keep labels readable in copied email images.
+// One combined chart: runtime bars, consumption line and upward refill bars.
+export function smoothEnergySegments(points) {
+  const groups=[];let current=[];
+  for(const point of points){
+    if(!point){if(current.length)groups.push(current);current=[];}else current.push(point);
+  }
+  if(current.length)groups.push(current);
+  return groups.map(group=>{
+    const slopes=group.slice(1).map((point,i)=>(point.y-group[i].y)/(point.x-group[i].x));
+    const tangents=group.map((_,i)=>{
+      if(i===0)return slopes[0]||0;
+      if(i===group.length-1)return slopes.at(-1)||0;
+      const a=slopes[i-1],b=slopes[i];
+      return a*b>0?2*a*b/(a+b):0;
+    });
+    return {start:group[0],curves:group.slice(1).map((end,i)=>{
+      const start=group[i],dx=(end.x-start.x)/3;
+      return {cp1:{x:start.x+dx,y:start.y+tangents[i]*dx},cp2:{x:end.x-dx,y:end.y-tangents[i+1]*dx},end};
+    })};
+  });
+}
+
 export function renderWeeklyPlot(canvas,report,site,kind,theme,helpers) {
   const {weeklyFields,weeklyDate,weeklyNumber,weeklyAverage,weeklyCoverageNote}=helpers;
   const ctx=canvas.getContext('2d'),dark=theme!=='light',signed=theme==='excel',field=weeklyFields(site,kind);
-  const c={bg:signed?'#000':dark?'#101e2b':'#fff',ink:dark?'#f1f6fb':'#203c50',muted:dark?'#b3c4d2':'#526979',line:dark?'#2b4050':'#dbe5ed',bar:'#5b9bd5',usage:dark?'#ffb454':'#b45309',addition:dark?'#4ade80':'#15803d'};
+  const c={bg:signed?'#000':dark?'#101e2b':'#fff',ink:dark?'#fff':'#203c50',muted:signed?'#fff':dark?'#b3c4d2':'#526979',line:signed?'#d9d9d9':dark?'#2b4050':'#dbe5ed',bar:'#5b9bd5',usage:signed?'#ed7d31':dark?'#ffb454':'#b45309',addition:dark?'#4ade80':'#15803d'};
   const text=(value,x,y,size=15,ink=c.ink,bold=false,align='left')=>{ctx.font=`${bold?700:400} ${size}px Arial`;ctx.fillStyle=ink;ctx.textAlign=align;ctx.fillText(String(value),x,y);};
-  const pill=(value,x,y,ink)=>{ctx.font='700 14px Arial';const width=ctx.measureText(value).width+10;ctx.fillStyle=c.bg;ctx.fillRect(x-width/2,y-16,width,22);ctx.strokeStyle=ink;ctx.lineWidth=1;ctx.strokeRect(x-width/2,y-16,width,22);text(value,x,y,14,ink,true,'center');};
+  const label=(value,x,y,ink,consumption=false)=>{ctx.font='700 15px Arial';const width=ctx.measureText(value).width+12;ctx.fillStyle=consumption?'#000':c.bg;ctx.fillRect(x-width/2,y-17,width,24);text(value,x,y,15,consumption?'#fff':signed?c.ink:ink,true,'center');};
   ctx.fillStyle=c.bg;ctx.fillRect(0,0,1200,650);
-  text(`${site.id} · ${field.name.toUpperCase()}`,40,42,26,c.ink,true);
+  text(`${site.id} · ${field.name.toUpperCase()}${field.measured?' & '+(kind==='grid'?'EKEDC':'DIESEL')+' USAGE':''}`,40,42,25,c.ink,true);
   text(`${weeklyDate(report.weekStart)} – ${weeklyDate(report.weekEnd)} ${report.weekEnd.slice(0,4)} · Lagos / WAT${!report.elapsed?' · WEEK TO DATE':''}`,40,76,16,c.muted);
-  [[c.bar,`${field.name} (hrs)`],[c.usage,`Usage (${field.unit}) · ${signed?'downward':'lower band'}`],[c.addition,kind==='grid'?'Top-ups · upward':'Refills · upward']].slice(0,field.measured?3:1).forEach(([ink,label],i)=>{ctx.fillStyle=ink;ctx.fillRect(40+i*370,101,11,11);text(label,60+i*370,112,14,c.muted);});
-  const x=85,w=1030,step=w/7,y=155,h=190;
+  const added=kind==='grid'?'gridAdded':'dieselAdded',hasAdditions=(site[added]||0)>0;
+  const legend=[[c.bar,`${field.name} (hrs)`]];
+  if(field.measured)legend.push([c.usage,`${kind==='grid'?'EKEDC':'Diesel'} ${signed?'balance change':'consumption'} (${field.unit})`]);
+  if(field.measured&&hasAdditions)legend.push([c.addition,kind==='grid'?'Top-ups':'Refills']);
+  legend.forEach(([ink,name],i)=>{ctx.fillStyle=ink;ctx.fillRect(40+i*370,101,11,11);text(name,60+i*370,112,14,c.muted);});
+  const x=85,w=1030,step=w/7,y=180,h=310;
   const hourMax=Math.max(2,Math.ceil(Math.max(0,...site.days.map(r=>r[field.hours]||0))/2)*2);
-  text('HOURS',x,y-18,12,c.muted,true);
+  const quantityMax=Math.max(5,...site.days.flatMap(r=>[r[field.usage]||0,r[added]||0]));
+  text(kind==='grid'?'EKEDC AVAILABILITY · HRS':'GENERATOR RUNTIME · HRS',x,y-38,12,c.muted,true);
+  if(field.measured)text(field.unit+' · '+(signed?'BALANCE CHANGE':'CONSUMPTION'),x+w,y-38,12,c.muted,true,'right');
   for(let i=0;i<=4;i++){
-    const yy=y+h-h*i/4;ctx.strokeStyle=c.line;ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();
+    const yy=y+h-h*i/4;
+    if(i>0){ctx.strokeStyle=signed?'#292929':c.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();}
     text((hourMax*i/4).toFixed(1),x-12,yy+4,12,c.muted,false,'right');
+    if(field.measured)text((signed?-quantityMax*(1-i/4):quantityMax*i/4).toFixed(1),x+w+12,yy+4,12,c.muted);
   }
+  // Weekly uses horizontal guides only. Daily Excel charts keep their grid-free template.
+  ctx.strokeStyle=c.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y+h);ctx.lineTo(x+w,y+h);ctx.stroke();
   site.days.forEach((row,i)=>{
-    const cx=x+step*(i+.5),value=row[field.hours];
-    if(value!=null){const height=value/hourMax*h;ctx.fillStyle=c.bar;ctx.fillRect(cx-28,y+h-height,56,height);pill(weeklyNumber(value),cx,y+h-height-10,c.ink);}
+    const cx=x+step*(i+.5),value=row[field.hours],addition=row[added]||0,barX=hasAdditions?cx-41:cx-28;
+    if(value!=null){const height=value/hourMax*h;ctx.fillStyle=c.bar;ctx.fillRect(barX,y+h-height,hasAdditions?40:56,height);label(weeklyNumber(value),barX+(hasAdditions?20:28),y+h-height-10,c.ink);}
     else text(row.future?'Upcoming':'No entry',cx,y+h-10,12,c.muted,false,'center');
+    if(field.measured&&addition&&!row.future){const height=addition/quantityMax*h;ctx.fillStyle=c.addition;ctx.fillRect(cx+14,y+h-height,30,height);label('+'+weeklyNumber(addition)+(row[kind==='grid'?'gridAdditionInferred':'dieselAdditionInferred']?'*':''),cx+29,y+h-height-10,c.addition);}
     text(weeklyDate(row.date),cx,y+h+29,14,c.muted,false,'center');
   });
-  const added=kind==='grid'?'gridAdded':'dieselAdded';
   if(field.measured){
-    text(`${kind==='grid'?'EKEDC':'DIESEL'} · ${field.unit} · consumption and additions`,85,402,13,c.muted,true);
-    const maximum=Math.max(5,...site.days.flatMap(row=>[row[field.usage]||0,row[added]||0]));
-    const baseline=signed?466:522,quantityHeight=signed?39:88;
-    ctx.strokeStyle=c.line;ctx.beginPath();ctx.moveTo(x,baseline);ctx.lineTo(x+w,baseline);ctx.stroke();
-    site.days.forEach((row,i)=>{
-      if(row.future)return;
-      const cx=x+step*(i+.5),used=row[field.usage],addition=row[added]||0;
-      if(used!=null){const size=used/maximum*quantityHeight;ctx.fillStyle=c.usage;ctx.fillRect(cx-47,signed?baseline:baseline-size,28,size);pill(weeklyNumber(signed&&used?-used:used),cx-33,signed?baseline+size+21:baseline-size-9,c.usage);}
-      else text('Review',cx-33,baseline-8,12,c.muted,false,'center');
-      if(addition){const size=addition/maximum*quantityHeight;ctx.fillStyle=c.addition;ctx.fillRect(cx+19,baseline-size,28,size);pill('+'+weeklyNumber(addition)+(row[kind==='grid'?'gridAdditionInferred':'dieselAdditionInferred']?'*':''),cx+33,baseline-size-9,c.addition);}
+    const points=site.days.map((row,i)=>row[field.usage]==null||row.future?null:{x:x+step*(i+.5),y:signed?y+row[field.usage]/quantityMax*h:y+h-row[field.usage]/quantityMax*h,value:row[field.usage]});
+    // Background halo separates the original orange line from blue bars without changing its colour.
+    const segments=smoothEnergySegments(points);
+    for(const [ink,width] of [['#000',9],[c.usage,4]]){
+      ctx.strokeStyle=ink;ctx.lineWidth=width;ctx.beginPath();
+      for(const segment of segments){ctx.moveTo(segment.start.x,segment.start.y);for(const curve of segment.curves)ctx.bezierCurveTo(curve.cp1.x,curve.cp1.y,curve.cp2.x,curve.cp2.y,curve.end.x,curve.end.y);}
+      ctx.stroke();
+    }
+    points.forEach((point,i)=>{
+      if(!point)return;
+      ctx.fillStyle=c.usage;ctx.beginPath();ctx.arc(point.x,point.y,5,0,Math.PI*2);ctx.fill();
+      let yy=point.y+(signed?24:-12);
+      const hours=site.days[i][field.hours]||0,barLabel=y+h-hours/hourMax*h-10;
+      if(Math.abs(yy-barLabel)<28)yy=barLabel>y+h-38?barLabel-32:point.y+25;
+      yy=Math.max(y+14,Math.min(y+h-8,yy));
+      label(weeklyNumber(signed&&point.value?-point.value:point.value),point.x,yy,c.usage,true);
     });
-  }else text('Gas consumption is not tracked.',85,440,15,c.muted);
-  text(`Logged total: ${weeklyNumber(site[field.hours])} hrs · Daily average: ${weeklyAverage(site,kind)} hrs`,40,564,17,c.ink,true);
-  if(field.measured)text(`Usage: ${weeklyNumber(site[field.usage])} ${field.unit}${field.usagePartial?' · partial':''} · ${kind==='grid'?'Top-ups':'Refills'}: +${weeklyNumber(site[added]||0)} ${field.unit}`,40,592,15,c.muted);
+  }
+  text(`Logged total: ${weeklyNumber(site[field.hours])} hrs · Daily average: ${weeklyAverage(site,kind)} hrs`,40,572,17,c.ink,true);
+  if(!field.measured&&kind==='gen')text('Gas consumption is not tracked.',40,602,15,c.muted);
   ctx.font='13px Arial';ctx.fillStyle=c.muted;ctx.textAlign='left';ctx.fillText(weeklyCoverageNote(report,site,kind),40,628,1120);
 }

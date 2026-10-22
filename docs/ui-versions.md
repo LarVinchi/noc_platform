@@ -15,6 +15,7 @@ local UI tag does not publish a release, push code, or deploy it.
 | `ui-v1.4.0` | Adds OneDrive-linked document intake, collector-report import, extraction/provenance previews, pause/resume, storage counters and audience controls. Original OneDrive files remain at their source. |
 | `ui-v1.5.0` | Adds the official AFL navy/green brand and a separate FTTH workspace with provisioning, Telewyz support, frozen daily plans and closure, reconciled network snapshots, weekly reports and opt-in server mail delivery. Preserves the OneDrive intake workflow. |
 | `ui-v1.6.0` | Refines energy date selection and chart readability; adds visible refill/top-up bars, explicit refill accounting, zero-day weekly averages and current-week reporting. |
+| `ui-v1.6.1` | Restores Excel template colours and grid-free daily charts; combines weekly runtime and smoothed consumption on dual axes, with horizontal guides and black-backed values. Removes the separate weekly consumption band. |
 
 The numeric portion follows MAJOR.MINOR.PATCH: a compatible design enhancement
 increments MINOR; a correction increments PATCH; an incompatible UI contract

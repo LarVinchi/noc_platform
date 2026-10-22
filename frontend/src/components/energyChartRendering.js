@@ -32,24 +32,26 @@ export function dailyChartSeries(site,kind,report) {
 
 export function drawChart(canvas,site,kind,mode,report) {
   const ctx=canvas.getContext('2d'), W=1200, H=mode==='excel'?552:680, dark=mode!=='light', signed=mode==='excel';
-  const color={bg:signed?'#000':dark?'#101820':'#fff',ink:dark?'#f2f7fb':'#183345',muted:dark?'#b2c2cf':'#526979',line:dark?'#2d4050':'#dce5ec',hours:'#5b9bd5',usage:dark?'#ffb454':'#b45309',addition:dark?'#4ade80':'#15803d'};
+  const color={bg:signed?'#000':dark?'#101820':'#fff',ink:signed?'#fff':dark?'#f2f7fb':'#183345',muted:signed?'#fff':dark?'#b2c2cf':'#526979',line:signed?'#d9d9d9':dark?'#2d4050':'#dce5ec',hours:'#5b9bd5',usage:signed?'#ed7d31':dark?'#ffb454':'#b45309',addition:dark?'#4ade80':'#15803d'};
   const text=(value,x,y,size=16,ink=color.ink,weight=400,align='left')=>{ctx.font=`${weight} ${size}px Arial,sans-serif`;ctx.fillStyle=ink;ctx.textAlign=align;ctx.fillText(String(value),x,y);};
-  const pill=(value,x,y,ink)=>{ctx.font='700 15px Arial';const width=ctx.measureText(value).width+12;ctx.fillStyle=color.bg;ctx.fillRect(x-width/2,y-17,width,23);ctx.strokeStyle=ink;ctx.lineWidth=1;ctx.strokeRect(x-width/2,y-17,width,23);text(value,x,y,15,ink,700,'center');};
+  const pill=(value,x,y,ink)=>{ctx.font='700 15px Arial';const width=ctx.measureText(value).width+12;ctx.fillStyle=color.bg;ctx.fillRect(x-width/2,y-17,width,23);if(!signed){ctx.strokeStyle=ink;ctx.lineWidth=1;ctx.strokeRect(x-width/2,y-17,width,23);}text(value,x,y,15,signed?color.ink:ink,700,'center');};
   ctx.fillStyle=color.bg;ctx.fillRect(0,0,W,H);
   const measured=kind==='grid'?(site.id==='PROJN01'||site.gridUsed!=null):site.fuel==='Diesel';
   const unit=kind==='grid'?'kWh':'L', name=kind==='grid'?'EKEDC availability':'Generator runtime';
+  const data=dailyChartSeries(site,kind,report);
   text(`${site.id} · ${name.toUpperCase()}${measured?' & '+(kind==='grid'?'EKEDC':'DIESEL')+' USAGE':''}`,40,44,25,color.ink,700);
   text(`${dateText(report.date)} · Lagos / WAT`,40,77,16,color.muted);
-  [[color.hours,`${name} (hrs)`],[color.usage,`Consumption (${unit})${signed?' · downward':''}`],[color.addition,kind==='grid'?'Top-up · upward':'Refill · upward']].slice(0,measured?3:1).forEach(([ink,label],i)=>{ctx.fillStyle=ink;ctx.fillRect(40+i*365,102,12,12);text(label,62+i*365,114,14,color.muted);});
-  const data=dailyChartSeries(site,kind,report), x=85,w=1030,y=160,h=signed?270:330;
+  [[color.hours,`${name} (hrs)`],[color.usage,`Consumption (${unit})${signed?' · downward':''}`],[color.addition,kind==='grid'?'Top-up · upward':'Refill · upward']].slice(0,measured?(data.some(r=>r.addition)?3:2):1).forEach(([ink,label],i)=>{ctx.fillStyle=ink;ctx.fillRect(40+i*365,102,12,12);text(label,62+i*365,114,14,color.muted);});
+  const x=85,w=1030,y=160,h=signed?270:330;
   const overlap=site.issues.some(issue=>issue.message.startsWith('Overlapping '+kind));
   const partial=kind==='grid'?site.gridPartial:site.dieselPartial;
   if(!data.length){const [label,note]=energyEmptyLabel(site,kind);text(label,W/2,280,25,color.ink,700,'center');text(note,W/2,315,16,color.muted,400,'center');return;}
   const hourMax=Math.max(2,Math.ceil(Math.max(...data.map(v=>v.hours))/2)*2);
   const quantityMax=Math.max(5,Math.ceil(Math.max(...data.map(v=>Math.max(v.used,v.addition)))/5)*5);
   const zero=signed?y+h*.50:y+h, quantityHeight=signed?h*.45:h, hourHeight=signed?h*.45:h;
-  text('HOURS',x,y-18,13,color.muted,700);if(measured)text(unit+' · RIGHT AXIS',x+w,y-18,13,color.muted,700,'right');
+  if(!signed){text('HOURS',x,y-18,13,color.muted,700);if(measured)text(unit+' · RIGHT AXIS',x+w,y-18,13,color.muted,700,'right');}
   for(let i=0;i<=4;i++){
+    if(signed){if(i===0){ctx.strokeStyle=color.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,zero);ctx.lineTo(x+w,zero);ctx.stroke();}continue;}
     const yy=zero-hourHeight*i/4;ctx.strokeStyle=color.line;ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();
     text((hourMax*i/4).toFixed(1),x-12,yy+5,12,color.muted,400,'right');
     if(measured)text((quantityMax*i/4).toFixed(1),x+w+12,yy+5,12,color.muted);

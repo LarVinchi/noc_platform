@@ -2,7 +2,7 @@
 
 Open **Energy → Weekly report**. Select a week, site and workbook or isolated
 collector dataset. The report covers Monday through Sunday in Africa/Lagos.
-Its daily bars, separate quantity band and seven-row pivot table follow the structure
+Its daily bars, smoothed consumption line and seven-row pivot table follow the structure
 of the supplied PowerPoint slides 8–15. The presentation is a layout reference;
 figures come from the selected imported RawData snapshot, not slide caches.
 
@@ -38,8 +38,13 @@ gas consumption is not tracked. EKEDC usage appears where readings exist.
 Use **Current week**, the recent-week dropdown or previous/next arrows for quick
 navigation. Editing the date does not reload the report until **Apply**; choosing
 any day resolves to its Monday. This avoids the calendar jumping while selecting.
-Runtime and quantity values occupy separate weekly chart bands with outlined
-value labels so the orange figures remain legible alongside the blue hours bars.
+Weekly runtime bars and the smoothed consumption line share one chart, with hours
+on the left axis and kWh/litres on the right. Horizontal gridlines guide reading;
+black-backed consumption labels and a dark line halo separate orange from blue.
+Smoothing does not overshoot neighbouring daily values or connect missing days.
+There is no separate consumption chart or consumption-total caption underneath.
+Excel appearance retains blue `#5B9BD5`, orange `#ED7D31`, black background and white
+labels. The daily Excel template keeps its single baseline with no gridlines.
 
 Copy or download charts and tables independently, or download the entire report.
 Chart images are 2400 × 1300; table images are 2400 × 1000 and include a side
