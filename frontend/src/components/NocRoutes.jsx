@@ -13,6 +13,7 @@ import Documents from '../pages/Documents';
 import FtthOperations from '../pages/FtthOperations';
 import MailTriage from '../pages/MailTriage';
 import ApprovedKnowledge from '../pages/ApprovedKnowledge';
+import LinkedDocumentIntake from '../pages/LinkedDocumentIntake';
 import EnergyOperations from '../pages/EnergyOperations';
 import ServerHealth from '../pages/ServerHealth';
 import { EmptyState } from './WorkspaceUI';
@@ -29,6 +30,7 @@ export default function NocRoutes({ identity }) {
     <Route path="/incidents" element={<IncidentManagement identity={identity} />} />
     <Route path="/response" element={<ResponseCenter identity={identity} />} />
     <Route path="/documents" element={<Documents identity={identity} />} />
+    <Route path="/documents/intake" element={<LinkedDocumentIntake identity={identity} />} />
     <Route path="/ftth-operations" element={<FtthOperations identity={identity} />} />
     <Route path="/mail" element={<MailTriage identity={identity} />} />
     <Route path="/knowledge" element={<ApprovedKnowledge identity={identity} />} />

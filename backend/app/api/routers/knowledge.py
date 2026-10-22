@@ -14,6 +14,7 @@ from app.api.routers.documents import access, document, is_admin
 from app.models.documents import Document, DocumentVersion
 from app.models.knowledge import KnowledgeApproval, KnowledgeEvent
 from app.services import knowledge_client as worker, document_storage as storage
+from app.services import linked_documents as links
 
 router = APIRouter(prefix='/knowledge', tags=['Approved knowledge'])
 
@@ -31,7 +32,7 @@ def catalogue(db):
 
 
 def allowed(db, ids):
-    return [identity(v) for _,v,a in catalogue(db).filter(Document.document_id.in_(ids)).all() if a and a.approved]
+    return [identity(v) for _,v,a in catalogue(db).filter(Document.document_id.in_(ids)).all() if a and a.approved and links.usable(db,v)]
 
 
 def audit(db, kind, sources, note=None, request_id=None, model=None, index_version=None):
@@ -55,8 +56,9 @@ def status(db: Session = Depends(get_db)):
         except Exception:
             pass
     rows = catalogue(db).all()
-    approved = sum(bool(a and a.approved) for _,_,a in rows)
+    approved = sum(bool(a and a.approved and links.usable(db,v)) for _,v,a in rows)
     return {'rag_connected': connected, 'query_available': connected and approved > 0,
+        'linked_intake_available':settings.LINKED_DOCUMENTS_ENABLED and is_admin(),
         'generation_available': connected, 'approval_available': worker.configured() and is_admin(),
         'draft_generation_available': False, 'case_query_available': False,
         'indexed_sources': approved, 'approved_sources': approved,
@@ -71,7 +73,9 @@ def sources(db: Session = Depends(get_db)):
     rows = catalogue(db).order_by(Document.created_at.desc()).limit(100).all()
     return {'items': [{'document_id': d.document_id, 'title': d.title, 'version': identity(v),
         'revision': v.revision, 'filename': v.original_filename,
-        'supported': (v.media_type == 'text/plain' and v.byte_size <= 200000) or (v.media_type == 'application/pdf' and v.byte_size <= 5000000),
+        'origin_kind':'onedrive_link' if v.storage_key.startswith('linked/') else 'retained_upload',
+        'eligible':links.usable(db,v),
+        'supported': links.usable(db,v) if v.storage_key.startswith('linked/') else (v.media_type == 'text/plain' and v.byte_size <= 200000) or (v.media_type == 'application/pdf' and v.byte_size <= 5000000),
         'approved': bool(a and a.approved), 'reviewed_by': a.reviewed_by if a else None,
         'reviewed_at': a.reviewed_at if a else None} for d,v,a in rows], 'limit': 100}
 
@@ -115,13 +119,19 @@ def review(version_id: UUID, data: Review, db: Session = Depends(get_db)):
         except Exception:
             return {'approved': False, 'worker_notified': False}
         return {'approved': False, 'worker_notified': True}
-    if not ((version.media_type == 'text/plain' and version.byte_size <= 200000)
+    linked=links.linked(db,version)
+    if version.storage_key.startswith('linked/'):
+        if not links.usable(db,version):
+            raise HTTPException(409,'Linked source is unavailable, stale or lacks complete extraction; rescan before approval')
+        payload={'source':source,'extraction_sha256':linked.extraction_sha256,'chunks':linked.chunks}
+    elif not ((version.media_type == 'text/plain' and version.byte_size <= 200000)
             or (version.media_type == 'application/pdf' and version.byte_size <= 5000000)):
         raise HTTPException(422, 'Supports UTF-8 TXT up to 200 KB or text-based PDF up to 5 MB')
-    original = storage.verified_path(version).read_bytes()
-    if version.media_type == 'application/pdf':
+    elif version.media_type == 'application/pdf':
+        original = storage.verified_path(version).read_bytes()
         payload = {'source': source, 'pdf_base64': base64.b64encode(original).decode('ascii')}
     else:
+        original = storage.verified_path(version).read_bytes()
         try:
             content = original.decode('utf-8')
         except UnicodeDecodeError:
@@ -130,7 +140,7 @@ def review(version_id: UUID, data: Review, db: Session = Depends(get_db)):
             raise HTTPException(422, 'Wrap source lines to at most 2800 characters before approving')
         payload = {'source': source, 'content': content}
     try:
-        indexed = worker.request('/v1/sources/index', payload)
+        indexed = worker.request('/v1/sources/extracted' if linked else '/v1/sources/index', payload)
         if indexed.get('indexed') is not True or indexed.get('source') != source:
             raise ValueError('Index identity mismatch')
     except Exception:

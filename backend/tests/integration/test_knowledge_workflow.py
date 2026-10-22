@@ -15,11 +15,12 @@ from sqlalchemy.orm import Session
 from sqlalchemy.pool import StaticPool
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.dialects.postgresql import JSONB
-from app.api.routers import documents, knowledge
+from app.api.routers import documents, knowledge, document_intake
 from app.core import db as database, security
 from app.core.config import settings
 from app.models.documents import Document, DocumentVersion
 from app.models.knowledge import KnowledgeApproval, KnowledgeEvent
+from app.models.linked_documents import LinkedCollection, LinkedRevision, LinkedScan
 from app.services import knowledge_client as worker
 
 
@@ -34,12 +35,13 @@ def api(tmp_path,monkeypatch):
     @event.listens_for(engine,'connect')
     def now(connection,_):
         connection.create_function('now',0,lambda:dt.datetime.now(dt.timezone.utc).isoformat())
-    tables = [Document.__table__,DocumentVersion.__table__,KnowledgeApproval.__table__,KnowledgeEvent.__table__]
+    tables = [Document.__table__,DocumentVersion.__table__,KnowledgeApproval.__table__,KnowledgeEvent.__table__,LinkedCollection.__table__,LinkedRevision.__table__,LinkedScan.__table__]
     database.Base.metadata.create_all(engine,tables=tables)
     # Production audit context is set_config(), a PostgreSQL-only SQL function.
     event.remove(Session,'before_flush',database.set_audit_actor)
     session = Session(engine)
     monkeypatch.setattr(settings,'DOCUMENT_STORAGE_ROOT',str(tmp_path/'documents'))
+    monkeypatch.setattr(settings,'LINKED_DOCUMENTS_ENABLED',True)
     monkeypatch.setattr(worker,'configured',lambda:True)
     actor = {'id':'admin-test','roles':['NOC.Admin'],'verified':True}
     monkeypatch.setattr(security,'auth_configuration',lambda:{'mode':'entra','configured':True})
@@ -53,6 +55,11 @@ def api(tmp_path,monkeypatch):
             assert hashlib.sha256(raw).hexdigest() == payload['source']['sha256']
             index[payload['source']['version_id']] = payload
             return {'indexed':True,'source':payload['source']}
+        if path == '/v1/sources/extracted':
+            from app.services.linked_documents import digest
+            assert digest(payload['chunks'])==payload['extraction_sha256']
+            index[payload['source']['version_id']]={'content':payload['chunks'][0]['text']}
+            return {'indexed':True,'source':payload['source']}
         if path == '/v1/sources/revoke':
             index.pop(payload['version_id'],None)
             return {'revoked':True}
@@ -62,6 +69,7 @@ def api(tmp_path,monkeypatch):
                           'excerpt':index[source['version_id']]['content'][:600]}]}
     monkeypatch.setattr(worker,'request',request)
     app = FastAPI(); app.include_router(documents.router,prefix='/api'); app.include_router(knowledge.router,prefix='/api')
+    app.include_router(document_intake.router,prefix='/api')
     app.add_middleware(security.AccessMiddleware)
     def db():
         try: yield session

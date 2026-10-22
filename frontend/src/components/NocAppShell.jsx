@@ -6,7 +6,7 @@ import AssistantProvider from './AssistantProvider';
 import FloatingAssistant from './FloatingAssistant';
 import ThemeSelector from './ThemeSelector';
 
-const pages = { '/server-health': 'Server health & deployments', '/energy': 'Energy operations', '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
+const pages = { '/documents/intake': 'OneDrive document intake', '/server-health': 'Server health & deployments', '/energy': 'Energy operations', '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
 const navigation = [
   { group: 'FTTH', items: [['/ftth-operations', HardHat, 'FTTH operations']] },
   { group: 'Operations', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/response', Clock3, 'Response centre'], ['/handover', ClipboardList, 'Shift handover'], ['/energy', Zap, 'Energy operations'], ['/provisioning', HardHat, 'Provisioning']] },
@@ -52,7 +52,7 @@ export default function NocAppShell({ children, identity, onLogout }) {
   const time = now.toLocaleTimeString('en-GB', { timeZone: 'Africa/Lagos', hour: '2-digit', minute: '2-digit' });
   const hour = Number(now.toLocaleString('en-GB', { timeZone: 'Africa/Lagos', hour: '2-digit', hourCycle: 'h23' }));
   const shift = hour >= 6 && hour < 14 ? 'Morning' : hour >= 14 && hour < 22 ? 'Afternoon' : 'Night';
-  const group = pathname === '/server-health' || pathname === '/audit' ? 'Governance' : navigation.find(item => item.items.some(([path]) => path === pathname))?.group || 'Workspace';
+  const group = pathname.startsWith('/documents/') ? 'Knowledge' : pathname === '/server-health' || pathname === '/audit' ? 'Governance' : navigation.find(item => item.items.some(([path]) => path === pathname))?.group || 'Workspace';
   const pageTitle = pathname === '/handover' ? 'Shift handover' : pathname === '/design/v0' ? 'Previous overview design' : pages[pathname] || 'Workspace';
   const groups = identity.roles.includes('NOC.Admin') ? [...navigation, { group: 'Governance', items: [['/server-health', Server, 'Server health'], ['/audit', History, 'Audit history']] }] : navigation;
   return <AssistantProvider key={pathname}><div className={`noc-shell ${collapsed ? 'nav-collapsed' : ''} ${mobileOpen ? 'mobile-nav-open' : ''}`}>

@@ -1,5 +1,8 @@
 # Approved-source knowledge workflow
 
+For derived-only OneDrive ingestion, see [linked-onedrive-intake.md](linked-onedrive-intake.md).
+The intake stores metadata and extracted text; original OneDrive files stay at their source.
+
 The connected workflow is a stateless question against explicitly selected,
 approved UTF-8 TXT or text-based PDF revisions. The private worker supports
 lexical retrieval or explicitly configured persistent Chroma/Gemini embeddings.
@@ -12,10 +15,10 @@ approval rather than silently omitting pages. The pilot parser still requires
 process isolation and resource limits before accepting arbitrary public files.
 Worker installations need `requirements-noc-vectors.txt` for PDF/vector support.
 
-The separate collector inventories explicitly approved folders on the Windows PC
-that syncs OneDrive. It does not move files, set NOC access or auto-publish scanned
-documents. Collector upload, ACL mapping and automated extraction jobs are a later
-integration stage; no direct Microsoft Graph document connector is active.
+The collector exports metadata and supported extractions from explicitly approved
+folders on the sync PC. Admin import and collection-scoped machine delivery are
+implemented. Source sharing and approval remain manual; neither scan nor import
+grants NOC access. No direct Microsoft Graph document connector is active.
 
 ## User workflow
 

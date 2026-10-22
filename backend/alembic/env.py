@@ -8,6 +8,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from app.models.energy import EnergyImport, EnergyTrialEvent, EnergySourceRevision, EnergySyncState
 from app.models.platform_health import PlatformHost, PlatformSample
 from app.models.knowledge import KnowledgeApproval, KnowledgeEvent
+from app.models.linked_documents import LinkedCollection, LinkedRevision, LinkedScan
 from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
 from app.core.config import settings
 from app.models.activity import ActivityEntry

@@ -20,6 +20,10 @@ class Settings(BaseSettings):
     KNOWLEDGE_ENABLED: bool = False
     KNOWLEDGE_SERVICE_URL: str = ""
     KNOWLEDGE_SERVICE_TOKEN: SecretStr = SecretStr("")
+    LINKED_DOCUMENTS_ENABLED: bool = False
+    LINKED_COLLECTOR_COLLECTION_ID: str = ""
+    LINKED_COLLECTOR_TOKEN: SecretStr = SecretStr("")
+    LINKED_ONEDRIVE_ALLOWED_HOSTS: list[str] = []
     ENERGY_FILE_PUSH_ENABLED: bool = False
     ENERGY_FILE_PUSH_SOURCE_ID: str = "site-energy"
     ENERGY_FILE_PUSH_INTERVAL_SECONDS: int = Field(default=3600, ge=60, le=86400)

@@ -13,6 +13,7 @@ from app.models.provisioning import ServiceOrder
 from app.models.crm import Service
 from app.models.incidents import Incident
 from app.services import document_storage as storage
+from app.services import linked_documents as links
 
 router = APIRouter(prefix='/documents',tags=['Private documents'])
 TYPES = {'customer_handover','installation_acceptance','installation_evidence','shift_handover','rca','work_order','daily_report','weekly_report','knowledge','source_workbook','other'}
@@ -159,5 +160,22 @@ def download(identifier: UUID,version_id: UUID,db: Session = Depends(get_db)):
     version = db.query(DocumentVersion).filter_by(document_id=identifier,version_id=version_id).first()
     if not version:
         raise HTTPException(404,'Document version not found')
+    if version.storage_key.startswith('linked/'):
+        raise HTTPException(409,'Original retained in OneDrive. Use source provenance; no server copy or exact historical download is available.')
     return FileResponse(storage.verified_path(version),media_type='application/octet-stream',filename=version.original_filename,
         headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'},content_disposition_type='attachment')
+
+
+@router.get('/{identifier}/versions/{version_id}/origin')
+def origin(identifier:UUID,version_id:UUID,db:Session=Depends(get_db)):
+    document(db,identifier)
+    version=db.query(DocumentVersion).filter_by(document_id=identifier,version_id=version_id).first()
+    if not version: raise HTTPException(404,'Document version not found')
+    if not version.storage_key.startswith('linked/'):
+        return {'kind':'retained_upload','exact_original_available':True}
+    row=links.linked(db,version)
+    if not row: raise HTTPException(409,'Linked origin is disabled or unavailable')
+    return {'kind':'onedrive_link','path':row.source_path,'original_url':row.original_url,'observed_at':row.observed_at,
+        'original_sha256':version.sha256,'extraction_sha256':row.extraction_sha256,'fresh':links.usable(db,version),
+        'exact_original_available':False,'identity_evidence':'Trusted collector attestation; server did not receive original bytes',
+        'notice':'OneDrive remains authoritative. A link opens the current file; this local collector cannot verify a historical cloud revision.'}
