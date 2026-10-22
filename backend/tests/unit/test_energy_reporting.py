@@ -1,6 +1,6 @@
 import datetime as dt
 import unittest
-from app.services.energy_reporting import events_for, make_report, read_records, timestamp, union_seconds, window
+from app.services.energy_reporting import comment_addition, events_for, make_report, read_records, timestamp, union_seconds, window
 
 
 def record(**changes):
@@ -72,6 +72,60 @@ class ReportingTests(unittest.TestCase):
         s = self.site([record(closing=150)])
         self.assertIsNone(s['gridUsed'])
         self.assertTrue(s['gridPartial'])
+
+    def test_explicit_refill_preserves_usage_and_positive_addition(self):
+        r = record(kind='gen', source='PROJN01-GEN', closing=140, comment='Diesel refill of 50 litres')
+        s = self.site([r])
+        self.assertEqual(s['dieselUsed'], 10)
+        self.assertEqual(s['dieselAdded'], 50)
+        self.assertEqual(s['records'][0]['addition'], 50)
+        self.assertFalse(s['dieselPartial'])
+
+    def test_refill_can_happen_despite_net_decrease(self):
+        s = self.site([record(kind='gen', source='PROJN01-GEN', closing=90, comment='Top-up of 50L')])
+        self.assertEqual(s['dieselUsed'], 60)
+        self.assertEqual(s['dieselAdded'], 50)
+
+    def test_actual_workbook_quantity_first_comments_and_level_targets(self):
+        for comment, quantity in [('50 liters top up',50),('25L Top up',25),('25 Litres geneator top up',25)]:
+            self.assertEqual(comment_addition(record(kind='gen',comment=comment)),quantity)
+        self.assertIsNone(comment_addition(record(kind='gen',comment='Diesel top up to 8.9cm')))
+        self.assertIsNone(comment_addition(record(kind='gen',comment='Refill 50 litres then refill 25 litres')))
+
+    def test_unknown_refill_quantity_and_boundary_assignment(self):
+        s = self.site([record(kind='gen', source='PROJN01-GEN',comment='Diesel top up')])
+        self.assertIsNone(s['dieselUsed'])
+        crossing = record(kind='gen',source='PROJN01-GEN',start=dt.datetime(2026,10,15,22,59,59),
+            stop=dt.datetime(2026,10,16,0,59,59),closing=140,comment='Refill 50 litres')
+        self.assertEqual(self.site([crossing])['dieselAdded'],50)
+        self.assertEqual(self.site([crossing],'2026-10-15')['dieselAdded'],0)
+        self.assertEqual(self.site([crossing])['dieselUsed'],5)
+
+    def test_ekedc_topup_and_independent_source_kinds(self):
+        s = self.site([record(closing=140,comment='Top up of 50 kWh')])
+        self.assertEqual(s['gridUsed'],10)
+        self.assertEqual(s['gridAdded'],50)
+        self.assertEqual(events_for([record(),record(kind='gen',opening=200,closing=190)]),[])
+
+    def test_inferred_refill_is_visible_without_inventing_consumption(self):
+        s = self.site([record(kind='gen', source='PROJN01-GEN', closing=140)])
+        self.assertEqual(s['dieselAdded'], 40)
+        self.assertIsNone(s['dieselUsed'])
+        self.assertFalse(s['records'][0]['additionConfirmed'])
+
+    def test_between_session_refill_comment_is_not_added_twice(self):
+        first = record(kind='gen',source='PROJN01-GEN')
+        second = record(row=2,kind='gen',source='PROJN01-GEN',start=first['stop'],stop=dt.datetime(2026,10,16,14),opening=140,closing=130,comment='Refill 50 litres')
+        s = self.site([first,second])
+        self.assertEqual(s['dieselAdded'],50)
+        self.assertEqual(s['dieselUsed'],20)
+
+    def test_planned_or_inconsistent_refill_does_not_create_usage(self):
+        s = self.site([record(kind='gen',source='PROJN01-GEN',closing=140,comment='Planned refill of 50 litres')])
+        self.assertIsNone(s['dieselUsed'])
+        s = self.site([record(kind='gen',source='PROJN01-GEN',closing=160,comment='Refill of 50 litres')])
+        self.assertIsNone(s['dieselUsed'])
+        self.assertTrue(s['dieselPartial'])
 
     def test_overlap_hours_merged_and_consumption_flagged(self):
         s = self.site([record(), record(row=2)])

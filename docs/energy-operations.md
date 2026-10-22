@@ -27,7 +27,11 @@ the same data. Source records retain operator comments and original row numbers.
 Hours use elapsed time, merge overlaps, and preserve one-second logging gaps.
 The Lagos reporting window ends at 23:59:59 and owns events at that cutoff.
 Missing stops are excluded; missing balances remain unknown/partial. Consumption
-is opening minus closing; additions are separate. Cross-boundary consumption is
+is opening + explicitly stated in-session addition − closing; additions are also
+shown separately as upward green refill/top-up bars. Inferred level increases
+show net additions for review and do not invent consumption. Comments such as
+`Refill of 50 litres` and `Top-up 100 kWh` supply the explicit quantity. Additions
+between source sessions are not counted twice. Cross-boundary consumption is
 prorated, with a warning. Excel charts round session durations like Power Query
 and plot consumption as negative balance change; overview values retain full
 precision. Hour-meter values remain visible separately.

@@ -58,3 +58,7 @@
 .energy-weekly-panel > div:last-child { display: flex; gap: 8px; padding: 16px; flex-wrap: wrap; }
 .energy-weekly .energy-toolbar label:has(input[type="checkbox"]) { display: flex; flex-direction: row; align-items: center; gap: 8px; }
 @media (max-width: 1000px) { .energy-weekly-grid { grid-template-columns: 1fr; } }
+
+.energy-date-picker{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.energy-date-picker form{display:flex;gap:8px;align-items:end}.energy-date-picker input[type=date]{min-width:155px}.energy-date-picker>label{min-width:150px}@media(max-width:600px){.energy-date-picker{width:100%}.energy-date-picker form{flex:1}.energy-date-picker form label{flex:1}.energy-date-picker>label{width:100%}}
+
+.energy-addition-value{color:#15803d;font-weight:650}.energy-chart--dark .energy-addition-value,.energy-chart--excel .energy-addition-value{color:#4ade80}

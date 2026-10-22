@@ -1,8 +1,8 @@
 # Weekly energy dashboard
 
-Open **Energy → Weekly report**. Select a Monday, site and workbook or isolated
+Open **Energy → Weekly report**. Select a week, site and workbook or isolated
 collector dataset. The report covers Monday through Sunday in Africa/Lagos.
-Its daily bars, consumption line and seven-row pivot table follow the structure
+Its daily bars, separate quantity band and seven-row pivot table follow the structure
 of the supplied PowerPoint slides 8–15. The presentation is a layout reference;
 figures come from the selected imported RawData snapshot, not slide caches.
 
@@ -14,18 +14,32 @@ gas consumption is not tracked. EKEDC usage appears where readings exist.
 
 - Each daily interval runs from the preceding 23:59:59 to that day's 23:59:59
   Lagos time, following the existing daily service.
-- Totals sum unrounded daily results. Daily averages divide by seven, provided
-  the week has elapsed and each day has relevant completed source records.
-- Missing dates or readings remain null, displayed as a dash. Missing usage,
-  open records and overlaps can withhold consumption averages. Recorded totals
-  can be partial; review the source validation notes in the daily report.
+- Totals sum unrounded daily results. An elapsed week averages over seven calendar
+  days, treating dates without entries as zero under the requested reporting policy.
+- Current week reports are selectable and average over calendar days reached,
+  including today. Future dates are excluded, not counted as zero. The denominator
+  and week-to-date qualification appear in the screen and copied images.
+- A missing reading within an actual session remains unresolved. Missing balances,
+  open records and overlaps can still withhold consumption averages; they do not
+  invent measurements. A failed source/API load is an error, not an empty zero week.
 - A day with records does not establish complete 24-hour observation coverage.
   Availability describes recorded EKEDC supply, not equipment uptime. All sites
   have batteries. No completed generator run logged is not proof it was off.
-- Consumption uses opening/closing readings, excludes top-up/refill increases
-  and prorates intervals across boundaries, as in the daily report.
+- Explicit refill/top-up quantities in comments adjust consumption as opening +
+  in-session addition − closing. Examples: `Refill of 50 litres`, `Top-up 100 kWh`,
+  `50 liters top up`, `25L Top up`, or the source wording `25 Litres geneator top up`.
+  Additions already detected between a previous closing and new opening are not
+  added twice. Level increases without a quantity show inferred net additions;
+  actual consumption remains unresolved. Refills are shown upward in green,
+  separately from orange consumption, in charts and relevant pivot tables.
 - Excel appearance shows negative balance change. Light and dark appearances
   show positive consumption. Calculations are identical across appearances.
+
+Use **Current week**, the recent-week dropdown or previous/next arrows for quick
+navigation. Editing the date does not reload the report until **Apply**; choosing
+any day resolves to its Monday. This avoids the calendar jumping while selecting.
+Runtime and quantity values occupy separate weekly chart bands with outlined
+value labels so the orange figures remain legible alongside the blue hours bars.
 
 Copy or download charts and tables independently, or download the entire report.
 Chart images are 2400 × 1300; table images are 2400 × 1000 and include a side
