@@ -42,13 +42,19 @@ export function drawChart(canvas,site,kind,mode,report) {
   text(`${site.id} · ${name.toUpperCase()}${measured?' & '+(kind==='grid'?'EKEDC':'DIESEL')+' USAGE':''}`,40,44,25,color.ink,700);
   text(`${dateText(report.date)} · Lagos / WAT`,40,77,16,color.muted);
   [[color.hours,`${name} (hrs)`],[color.usage,`Consumption (${unit})${signed?' · downward':''}`],[color.addition,kind==='grid'?'Top-up · upward':'Refill · upward']].slice(0,measured?(data.some(r=>r.addition)?3:2):1).forEach(([ink,label],i)=>{ctx.fillStyle=ink;ctx.fillRect(40+i*365,102,12,12);text(label,62+i*365,114,14,color.muted);});
-  const x=85,w=1030,y=160,h=signed?270:330;
+  const x=signed?27:85,w=signed?1146:1030,y=signed?144:160,h=signed?H-52-y:330;
   const overlap=site.issues.some(issue=>issue.message.startsWith('Overlapping '+kind));
   const partial=kind==='grid'?site.gridPartial:site.dieselPartial;
   if(!data.length){const [label,note]=energyEmptyLabel(site,kind);text(label,W/2,280,25,color.ink,700,'center');text(note,W/2,315,16,color.muted,400,'center');return;}
   const hourMax=Math.max(2,Math.ceil(Math.max(...data.map(v=>v.hours))/2)*2);
   const quantityMax=Math.max(5,Math.ceil(Math.max(...data.map(v=>Math.max(v.used,v.addition)))/5)*5);
-  const zero=signed?y+h*.50:y+h, quantityHeight=signed?h*.45:h, hourHeight=signed?h*.45:h;
+  // Preserve the original Excel plot proportions: shared scale, full-width
+  // categories and a baseline fitted to the actual positive/negative ranges.
+  const positive=Math.max(0,...data.map(r=>Math.max(r.hours,measured?r.addition:0)));
+  const negative=measured?Math.max(0,...data.map(r=>r.measured?r.used:0)):0;
+  const scale=h/(((positive+negative)||1)*1.14);
+  const zero=signed?(negative>0?y+positive*1.14*scale:y+h):y+h;
+  const quantityHeight=signed?quantityMax*scale:h, hourHeight=signed?hourMax*scale:h;
   if(!signed){text('HOURS',x,y-18,13,color.muted,700);if(measured)text(unit+' · RIGHT AXIS',x+w,y-18,13,color.muted,700,'right');}
   for(let i=0;i<=4;i++){
     if(signed){if(i===0){ctx.strokeStyle=color.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,zero);ctx.lineTo(x+w,zero);ctx.stroke();}continue;}
@@ -59,10 +65,11 @@ export function drawChart(canvas,site,kind,mode,report) {
   }
   const step=w/data.length;
   data.forEach((r,i)=>{
-    const cx=x+step*(i+.5), width=Math.min(55,step/(measured?4:2)), bx=measured?cx-width*1.6:cx-width/2;
+    const cx=x+step*(i+.5), width=signed?step*(measured?(data.some(v=>v.addition)?.18:.23):.315):Math.min(65,step*(measured?.27:.45));
+    const bx=measured?cx-width*(signed?1:1.6):cx-width/2,usageX=signed?cx:cx-width*.4;
     const height=r.hours/hourMax*hourHeight;ctx.fillStyle=color.hours;ctx.fillRect(bx,zero-height,width,height);pill(fmt(r.hours),bx+width/2,zero-height-10,color.ink);
     if(measured){
-      if(r.measured){const q=r.used/quantityMax*quantityHeight;ctx.fillStyle=color.usage;ctx.fillRect(cx-width*.4,signed?zero:zero-q,width,q);pill((signed?'-'+fmt(r.used):fmt(r.used))+(r.missing?'*':''),cx+width*.1,signed?zero+q+23:zero-q-10,color.usage);}
+      if(r.measured){const q=r.used/quantityMax*quantityHeight;ctx.fillStyle=color.usage;ctx.fillRect(usageX,signed?zero:zero-q,width,q);pill((signed?'-'+fmt(r.used):fmt(r.used))+(r.missing?'*':''),usageX+width/2,signed?zero+q+23:zero-q-10,color.usage);}
       else if(r.missing)text('Review',cx+width*.1,zero+(signed?25:-10),12,color.usage,600,'center');
       if(r.addition){const q=r.addition/quantityMax*quantityHeight;ctx.fillStyle=color.addition;ctx.fillRect(cx+width*.8,zero-q,width,q);pill('+'+fmt(r.addition)+(r.inferred?'*':''),cx+width*1.3,zero-q-10,color.addition);}
     }

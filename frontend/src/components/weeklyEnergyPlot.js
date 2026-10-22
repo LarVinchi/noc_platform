@@ -43,7 +43,7 @@ export function renderWeeklyPlot(canvas,report,site,kind,theme,helpers) {
     const yy=y+h-h*i/4;
     if(i>0){ctx.strokeStyle=signed?'#292929':c.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();}
     text((hourMax*i/4).toFixed(1),x-12,yy+4,12,c.muted,false,'right');
-    if(field.measured)text((signed?-quantityMax*(1-i/4):quantityMax*i/4).toFixed(1),x+w+12,yy+4,12,c.muted);
+    if(field.measured)text((signed&&i?-quantityMax*i/4:quantityMax*i/4).toFixed(1),x+w+12,yy+4,12,c.muted);
   }
   // Weekly uses horizontal guides only. Daily Excel charts keep their grid-free template.
   ctx.strokeStyle=c.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,y+h);ctx.lineTo(x+w,y+h);ctx.stroke();
@@ -55,7 +55,7 @@ export function renderWeeklyPlot(canvas,report,site,kind,theme,helpers) {
     text(weeklyDate(row.date),cx,y+h+29,14,c.muted,false,'center');
   });
   if(field.measured){
-    const points=site.days.map((row,i)=>row[field.usage]==null||row.future?null:{x:x+step*(i+.5),y:signed?y+row[field.usage]/quantityMax*h:y+h-row[field.usage]/quantityMax*h,value:row[field.usage]});
+    const points=site.days.map((row,i)=>row[field.usage]==null||row.future?null:{x:x+step*(i+.5),y:y+h-row[field.usage]/quantityMax*h,value:row[field.usage]});
     // Background halo separates the original orange line from blue bars without changing its colour.
     const segments=smoothEnergySegments(points);
     for(const [ink,width] of [['#000',9],[c.usage,4]]){
