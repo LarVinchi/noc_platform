@@ -1,5 +1,6 @@
 const fmt = value => value == null ? '—' : Number(value).toLocaleString('en-GB',{minimumFractionDigits:2,maximumFractionDigits:2});
 const dateText = day => new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Lagos'}).format(new Date(day+'T12:00:00+01:00'));
+const categoryDate = day => new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Africa/Lagos'}).format(new Date(day+'T12:00:00+01:00'));
 
 export function energyEmptyLabel(site,kind) {
   const incomplete = site.records.some(r => r.kind===kind && !r.stop);
@@ -42,7 +43,8 @@ export function drawChart(canvas,site,kind,mode,report) {
   text(`${site.id} · ${name.toUpperCase()}${measured?' & '+(kind==='grid'?'EKEDC':'DIESEL')+' USAGE':''}`,40,44,25,color.ink,700);
   text(`${dateText(report.date)} · Lagos / WAT`,40,77,16,color.muted);
   [[color.hours,`${name} (hrs)`],[color.usage,`Consumption (${unit})${signed?' · downward':''}`],[color.addition,kind==='grid'?'Top-up · upward':'Refill · upward']].slice(0,measured?(data.some(r=>r.addition)?3:2):1).forEach(([ink,label],i)=>{ctx.fillStyle=ink;ctx.fillRect(40+i*365,102,12,12);text(label,62+i*365,114,14,color.muted);});
-  const x=signed?27:85,w=signed?1146:1030,y=signed?144:160,h=signed?H-52-y:330;
+  // Keep separate rows for negative values, category dates/times and the summary.
+  const x=signed?27:85,w=signed?1146:1030,y=signed?144:160,h=signed?H-106-y:330;
   const overlap=site.issues.some(issue=>issue.message.startsWith('Overlapping '+kind));
   const partial=kind==='grid'?site.gridPartial:site.dieselPartial;
   if(!data.length){const [label,note]=energyEmptyLabel(site,kind);text(label,W/2,280,25,color.ink,700,'center');text(note,W/2,315,16,color.muted,400,'center');return;}
@@ -63,17 +65,20 @@ export function drawChart(canvas,site,kind,mode,report) {
     if(measured)text((quantityMax*i/4).toFixed(1),x+w+12,yy+5,12,color.muted);
     if(measured&&signed&&i>0)text((-quantityMax*i/4).toFixed(1),x+w+12,zero+quantityHeight*i/4+5,12,color.muted);
   }
-  const step=w/data.length;
+  const step=w/data.length,hasAdditions=measured&&data.some(r=>r.addition);
   data.forEach((r,i)=>{
-    const cx=x+step*(i+.5), width=signed?step*(measured?(data.some(v=>v.addition)?.18:.23):.315):Math.min(65,step*(measured?.27:.45));
-    const bx=measured?cx-width*(signed?1:1.6):cx-width/2,usageX=signed?cx:cx-width*.4;
+    const cx=x+step*(i+.5), width=signed?step*(measured?(hasAdditions?.18:.23):.315):Math.min(65,step*(measured?(hasAdditions?.2:.27):.45));
+    const gap=0,count=measured?(hasAdditions?3:2):1;
+    const bx=cx-(count*width+(count-1)*gap)/2,usageX=bx+width+gap,additionX=usageX+width+gap;
     const height=r.hours/hourMax*hourHeight;ctx.fillStyle=color.hours;ctx.fillRect(bx,zero-height,width,height);pill(fmt(r.hours),bx+width/2,zero-height-10,color.ink);
     if(measured){
       if(r.measured){const q=r.used/quantityMax*quantityHeight;ctx.fillStyle=color.usage;ctx.fillRect(usageX,signed?zero:zero-q,width,q);pill((signed?'-'+fmt(r.used):fmt(r.used))+(r.missing?'*':''),usageX+width/2,signed?zero+q+23:zero-q-10,color.usage);}
-      else if(r.missing)text('Review',cx+width*.1,zero+(signed?25:-10),12,color.usage,600,'center');
-      if(r.addition){const q=r.addition/quantityMax*quantityHeight;ctx.fillStyle=color.addition;ctx.fillRect(cx+width*.8,zero-q,width,q);pill('+'+fmt(r.addition)+(r.inferred?'*':''),cx+width*1.3,zero-q-10,color.addition);}
+      else if(r.missing)text('Review',usageX+width/2,zero+(signed?25:-10),12,color.usage,600,'center');
+      if(r.addition){const q=r.addition/quantityMax*quantityHeight;ctx.fillStyle=color.addition;ctx.fillRect(additionX,zero-q,width,q);pill('+'+fmt(r.addition)+(r.inferred?'*':''),additionX+width/2,zero-q-10,color.addition);}
     }
-    text(r.start?.slice(11,16)||'Daily total',cx,signed?H-45:y+h+30,14,color.muted,400,'center');
+    const categoryY=signed?H-63:y+h+30;
+    text(categoryDate(r.start?.slice(0,10)||report.date),cx,categoryY,13,color.muted,400,'center');
+    text(r.start?.slice(11,16)||'Daily total',cx,categoryY+18,14,color.muted,400,'center');
   });
   const footer=signed?H-14:565;
   text(`Logged runtime: ${fmt(kind==='grid'?site.gridHours:site.genHours)} hrs${measured?' · Consumption: '+fmt(kind==='grid'?site.gridUsed:site.dieselUsed)+' '+unit:''}${overlap?' · Overlap: review usage':partial?' · Partial usage':''}${signed&&data.some(r=>r.inferred)?' · * Inferred net refill; review consumption.':''}`,40,footer,15,color.ink,600);
