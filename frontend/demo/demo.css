@@ -1,5 +1,6 @@
 .demo-frame{display:flex;flex-direction:column;height:100dvh;overflow:hidden;background:var(--canvas);color:var(--text)}
 .demo-frame>.noc-shell{flex:1;min-height:0;height:auto}
+.demo-frame>.ftth-shell{flex:1;min-height:0;height:auto}
 .demo-banner{flex-shrink:0;display:flex;align-items:center;gap:12px;padding:6px 14px;background:#7a4b00;color:#fff7e6;font-size:12.5px;line-height:1.3;border-bottom:1px solid #5c3800;position:relative;z-index:2300}
 .demo-banner p{margin:0;flex:1;min-width:0}
 .demo-badge{display:inline-flex;align-items:center;gap:5px;padding:3px 8px;border-radius:4px;background:#fff7e6;color:#5c3800;font-weight:700;letter-spacing:.08em;font-size:11px}

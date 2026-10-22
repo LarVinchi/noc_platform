@@ -12,6 +12,7 @@ export default function FtthWorkspaceShell({children,identity,onLogout}) {
   const {pathname}=useLocation(),[mobile,setMobile]=useState(false);
   const panel=useRef(null),trigger=useRef(null);
   const title=navigation.find(([path])=>path===pathname)?.[2]||'FTTH workspace';
+  useEffect(()=>{document.getElementById('workspace-content')?.scrollTo({top:0});},[pathname]);
   useEffect(()=>{
     if(!mobile)return;
     const previous=document.activeElement;panel.current?.querySelector('a,button')?.focus();
