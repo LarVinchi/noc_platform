@@ -13,6 +13,7 @@ local UI tag does not publish a release, push code, or deploy it.
 | `ui-v1.2.1` | Aligns knowledge request timeouts with the private worker for live Gemini queries. Earlier tags remain unchanged. |
 | `ui-v1.3.0` | Adds reviewed PDF sources, reindex controls, actual retrieval identity and request budgets for semantic retrieval. Requires the optional vector/PDF worker dependencies; earlier tags remain unchanged. |
 | `ui-v1.4.0` | Adds OneDrive-linked document intake, collector-report import, extraction/provenance previews, pause/resume, storage counters and audience controls. Original OneDrive files remain at their source. |
+| `ui-v1.5.0` | Adds the official AFL navy/green brand and a separate FTTH workspace with provisioning, Telewyz support, frozen daily plans and closure, reconciled network snapshots, weekly reports and opt-in server mail delivery. Preserves the OneDrive intake workflow. |
 
 The numeric portion follows MAJOR.MINOR.PATCH: a compatible design enhancement
 increments MINOR; a correction increments PATCH; an incompatible UI contract

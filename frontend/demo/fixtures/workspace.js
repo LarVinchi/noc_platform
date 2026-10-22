@@ -1,3 +1,5 @@
+import { ftthSnapshot } from './ftthNetwork.js';
+import { ftthPlan, ftthWeek } from './ftthPlans.js';
 import { healthFixture, historyFixture } from './health.js';
 import { dailyEnergy, weeklyEnergy } from './energy.js';
 
@@ -38,13 +40,13 @@ const services = [
 ];
 
 function orders() {
-  const base = { service_category: 'FTTH', bandwidth: '50 Mbps', metrics: { acceptance_doc_url: null }, drop_cable_code: null, drop_tech_name: null, nap_code: null, nap_id: null, nap_port: null, service_id: null, activated_service_id: null };
+  const base = { service_category: 'FTTH', bandwidth: '50 Mbps', metrics: { acceptance_doc_url: null }, drop_cable_code: null, drop_tech_name: null, nap_code: null, nap_id: null, nap_port: null, service_id: null, activated_service_id: null, coverage_zone_name: 'Synthetic Oniru', created_at: minutes(4500), planned_install_date: minutes(1200), completion_date: null };
   return [
     { ...base, order_id: 'demo-ord-1', work_order_id: 'WO-DEMO-301', service_order_number: 'SO-DEMO-301', fn_number: 'FN-DEMO-0301', customer_name: 'Synthetic Customer 301', isp: 'MTNN', status: 'REQUESTED', service_address: '1 Example Close, Victoria Island' },
     { ...base, order_id: 'demo-ord-2', work_order_id: 'WO-DEMO-302', service_order_number: 'SO-DEMO-302', fn_number: 'FN-DEMO-0302', customer_name: 'Synthetic Customer 302', isp: 'METROREACH', status: 'SCHEDULED', service_address: '2 Sample Street, Lekki', nap_code: 'NAP-LK-007', nap_id: 'demo-nap-7', nap_port: 3 },
     { ...base, order_id: 'demo-ord-3', work_order_id: 'WO-DEMO-303', service_order_number: 'SO-DEMO-303', fn_number: 'FN-DEMO-0303', customer_name: 'Synthetic Customer 303', isp: 'MANGONET', status: 'IN_PROGRESS', service_address: '3 Placeholder Road, Ikoyi', nap_code: 'NAP-IK-002', nap_id: 'demo-nap-2', nap_port: 5, drop_tech_name: 'Synthetic Field Tech' },
-    { ...base, order_id: 'demo-ord-4', work_order_id: 'WO-DEMO-304', service_order_number: 'SO-DEMO-304', fn_number: 'FN-DEMO-0304', customer_name: 'Synthetic Customer 304', isp: 'MTNN', status: 'PENDING_ACCEPTANCE', service_address: '4 Fixture Avenue, Ajah', nap_code: 'NAP-AJ-011', nap_id: 'demo-nap-11', nap_port: 1, drop_cable_code: 'DC-DEMO-04' },
-    { ...base, order_id: 'demo-ord-5', work_order_id: 'WO-DEMO-305', service_order_number: 'SO-DEMO-305', fn_number: 'FN-DEMO-0305', customer_name: 'Example Retail', isp: 'MTNN', status: 'MONITORED', service_address: '5 Example Close, Victoria Island', nap_code: 'NAP-VI-014', nap_id: 'demo-nap-14', nap_port: 2, service_id: 'demo-svc-02', activated_service_id: 'demo-svc-02' },
+    { ...base, order_id: 'demo-ord-4', work_order_id: 'WO-DEMO-304', service_order_number: 'SO-DEMO-304', fn_number: 'FN-DEMO-0304', customer_name: 'Synthetic Customer 304', isp: 'MTNN', status: 'PENDING_ACCEPTANCE', completion_date: minutes(300), service_address: '4 Fixture Avenue, Ajah', nap_code: 'NAP-AJ-011', nap_id: 'demo-nap-11', nap_port: 1, drop_cable_code: 'DC-DEMO-04' },
+    { ...base, order_id: 'demo-ord-5', work_order_id: 'WO-DEMO-305', service_order_number: 'SO-DEMO-305', fn_number: 'FN-DEMO-0305', customer_name: 'Example Retail', isp: 'MTNN', status: 'MONITORED', completion_date: minutes(900), coverage_zone_name: 'Synthetic VI', service_address: '5 Example Close, Victoria Island', nap_code: 'NAP-VI-014', nap_id: 'demo-nap-14', nap_port: 2, service_id: 'demo-svc-02', activated_service_id: 'demo-svc-02' },
   ];
 }
 
@@ -153,6 +155,13 @@ export function resolveFixture(method, path, query, scenario) {
     [/^\/knowledge\/status$/, () => ({ indexed_sources: 0, approved_sources: 0, rag_connected: false, query_available: false, approval_available: false })],
     [/^\/mail\/connection$/, () => ({ connected: false, mode: 'unavailable', mailbox: null, last_sync_at: null, rag_connected: false, retention_automation: false, requirements: ['Design preview: no mailbox is connected'] })],
     [/^\/mail\/items$/, () => mailItems(scenario)],
+    [/^\/ftth\/daily-plans$/, () => ({items:scenario==='empty'?[]:[ftthPlan],limit:100})],
+    [/^\/ftth\/daily-plans\/([^/]+)\/history$/, () => ({items:[{action:'close',actor_id:'Synthetic Operator',occurred_at:ftthPlan.updated_at,report:ftthPlan}]})],
+    [/^\/ftth\/daily-plans\/([^/]+)$/, () => ftthPlan],
+    [/^\/ftth\/weekly-report$/, () => ftthWeek(query.start || '2026-10-19',scenario==='empty')],
+    [/^\/ftth\/report-deliveries$/, () => ({items:[],limit:100})],
+    [/^\/ftth\/network-reports$/, () => ({items:scenario === 'empty'?[]:[{snapshot_id:ftthSnapshot.snapshot_id,date:ftthSnapshot.date,notes:ftthSnapshot.notes,created_at:ftthSnapshot.created_at}],partners:ftthSnapshot.partners})],
+    [/^\/ftth\/network-reports\/([^/]+)$/, () => ftthSnapshot],
     [/^\/ftth\/reports$/, () => (scenario === 'empty'
       ? { start: minutes(43200), end: minutes(0), lifetime: { requests: 0, completed: 0, accepted: 0 }, period: { requests: 0, completed: 0, accepted: 0, new_incidents: 0, resolved_incidents: 0 }, active_incidents: 0, partial_histories: 0, unknown_acceptance_dates: 0, stage_durations: [], open_stage_ages: [], incident_mttr: [] }
       : { start: minutes(43200), end: minutes(0), lifetime: { requests: 5, completed: 2, accepted: 1 }, period: { requests: 5, completed: 2, accepted: 1, new_incidents: 1, resolved_incidents: 0 }, active_incidents: 1, partial_histories: 1, unknown_acceptance_dates: 0, stage_durations: [{ stage: 'SCHEDULED', samples: 4, mean_minutes: 1320.5, median_minutes: 1180 }, { stage: 'IN_PROGRESS', samples: 3, mean_minutes: 245.2, median_minutes: 210 }], open_stage_ages: [{ order_id: 'demo-ord-3', minutes: 182 }, { order_id: 'demo-ord-4', minutes: 640 }], incident_mttr: [{ category: 'Customer fault', samples: 2, mean_minutes: 96.5, median_minutes: 90 }] })],

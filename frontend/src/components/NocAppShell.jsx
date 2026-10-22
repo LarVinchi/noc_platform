@@ -1,20 +1,31 @@
 import { createElement, useEffect, useRef, useState } from 'react';
 import { NavLink, Link, useLocation } from 'react-router-dom';
-import { Server, LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, Network, LogOut, Clock3, ChevronRight, FileText, Mail, BookOpen, Zap, Menu, X, ChevronsUpDown, ClipboardList } from 'lucide-react';
+import { Server, LayoutDashboard, Map, Users, AlertTriangle, HardHat, History, Radio, PanelLeftClose, PanelLeftOpen, LogOut, Clock3, ChevronRight, FileText, Mail, BookOpen, Zap, Menu, X, ChevronsUpDown, ClipboardList } from 'lucide-react';
 import { incidentsApi } from '../api/client';
 import AssistantProvider from './AssistantProvider';
 import FloatingAssistant from './FloatingAssistant';
 import ThemeSelector from './ThemeSelector';
+import FtthWorkspaceShell from './FtthWorkspaceShell';
+import '../styles/afl-brand.css';
 
 const pages = { '/documents/intake': 'OneDrive document intake', '/server-health': 'Server health & deployments', '/energy': 'Energy operations', '/': 'Operations overview', '/response': 'Response centre', '/documents': 'Documents', '/mail': 'Mail triage', '/knowledge': 'Knowledge assistant', '/ftth-operations': 'FTTH operations', '/topology': 'Network topology', '/crm': 'Customers & services', '/provisioning': 'FTTH provisioning', '/incidents': 'Incident response', '/monitoring': 'Monitoring intake', '/audit': 'Audit history' };
 const navigation = [
-  { group: 'FTTH', items: [['/ftth-operations', HardHat, 'FTTH operations']] },
-  { group: 'Operations', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/response', Clock3, 'Response centre'], ['/handover', ClipboardList, 'Shift handover'], ['/energy', Zap, 'Energy operations'], ['/provisioning', HardHat, 'Provisioning']] },
+  { group: 'Operations', items: [['/', LayoutDashboard, 'Overview'], ['/incidents', AlertTriangle, 'Incident response'], ['/response', Clock3, 'Response centre'], ['/handover', ClipboardList, 'Shift handover'], ['/energy', Zap, 'Energy operations']] },
   { group: 'Network', items: [['/topology', Map, 'Network topology'], ['/monitoring', Radio, 'Monitoring'], ['/crm', Users, 'Customers & services']] },
   { group: 'Knowledge', items: [['/documents', FileText, 'Documents'], ['/knowledge', BookOpen, 'Knowledge assistant']] },
   { group: 'Communications', items: [['/mail', Mail, 'Mail triage']] },
 ];
-export default function NocAppShell({ children, identity, onLogout }) {
+export default function NocAppShell(props) {
+  const {pathname}=useLocation();
+  const isFtth = pathname === '/ftth' || pathname.startsWith('/ftth/');
+  useEffect(() => {
+    const preview = document.querySelector('meta[name="robots"]')?.content.includes('noindex');
+    document.title = `${preview ? 'DEMO | ' : ''}AFL Networks | ${isFtth ? 'FTTH' : 'NOC'} workspace`;
+  }, [isFtth]);
+  return isFtth?<FtthWorkspaceShell {...props}/>:<NocWorkspaceShell {...props}/>;
+}
+
+function NocWorkspaceShell({ children, identity, onLogout }) {
   const { pathname } = useLocation();
   const [collapsed, setCollapsed] = useState(false), [mobileOpen, setMobileOpen] = useState(false);
   const [now, setNow] = useState(new Date());
@@ -59,8 +70,9 @@ export default function NocAppShell({ children, identity, onLogout }) {
     <a className="skip-link" href="#workspace-content">Skip to workspace</a>
     {mobileOpen && <button className="nav-scrim" aria-label="Close navigation" tabIndex={-1} onClick={() => setMobileOpen(false)} />}
     <aside ref={sidebar} id="workspace-navigation" className="noc-sidebar" role={mobileOpen ? 'dialog' : undefined} aria-modal={mobileOpen || undefined} aria-label="Workspace navigation">
-      <Link to="/" className="noc-brand" aria-label="AFL NOC operations overview" onClick={() => setMobileOpen(false)}><span className="noc-brand-mark"><Network size={22} /></span><span className="nav-copy"><strong>AFL <span>NOC</span></strong><small>Network operations</small></span><ChevronsUpDown size={14} className="nav-copy brand-chevron" /></Link>
+      <Link to="/" className="noc-brand" aria-label="AFL NOC operations overview" onClick={() => setMobileOpen(false)}><img className="afl-icon-logo" src="/branding/afl-icon.png" alt=""/><span className="nav-copy afl-noc-brand"><img className="afl-full-logo" src="/branding/afl-networks-logo.png" alt="AFL Networks"/><small>NOC workspace</small></span><ChevronsUpDown size={14} className="nav-copy brand-chevron" /></Link>
       <button className="mobile-nav-close noc-icon-button" onClick={() => setMobileOpen(false)} aria-label="Close navigation"><X size={20} /></button>
+      <Link to="/ftth" className="noc-ftth-entry" onClick={()=>setMobileOpen(false)}><HardHat size={17}/><span className="nav-copy"><strong>FTTH workspace</strong><small>Operations & provisioning</small></span><ChevronRight size={14} className="nav-copy"/></Link>
       <nav aria-label="Main navigation" className="noc-navigation">{groups.map(section => <div className="nav-group" key={section.group}><p className="nav-group-label nav-copy">{section.group}</p>{section.items.map(([to, Icon, label]) => <NavLink end={to === '/'} key={to} to={to} title={label} onClick={() => setMobileOpen(false)} className={({ isActive }) => `noc-nav-link ${isActive ? 'is-active' : ''}`}>{createElement(Icon, { size: 17 })}<span className="nav-copy">{label}</span>{to === '/incidents' && feed.active > 0 && <span className="nav-count nav-copy">{feed.active}</span>}</NavLink>)}</div>)}</nav>
       <div className="sidebar-bottom"><div className="sidebar-appearance nav-copy"><span>Appearance</span><ThemeSelector /></div><div className="noc-sidebar-footer"><span className="identity-avatar">{identity.verified ? 'NO' : 'DM'}</span><div className="nav-copy"><strong>{identity.verified ? 'NOC workspace' : 'Demo workspace'}</strong><small>{identity.roles.includes('NOC.Admin') ? 'Administrator' : 'NOC operator'} · {identity.verified ? 'Verified' : 'Unverified'}</small></div><button className="noc-icon-button" onClick={onLogout} title="Sign out" aria-label="Sign out"><LogOut size={16} /></button></div></div>
     </aside>

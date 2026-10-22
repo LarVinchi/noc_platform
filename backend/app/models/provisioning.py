@@ -24,6 +24,7 @@ class ISPType(str, enum.Enum):
     MTNN = "MTNN"
     METROREACH = "METROREACH"
     MANGONET = "MANGONET"
+    TELEWYZ = "TELEWYZ"
 
 class ServiceOrder(Base):
     __tablename__ = "service_orders"

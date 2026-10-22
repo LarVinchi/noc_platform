@@ -1,0 +1,12 @@
+[Unit]
+Description=AFL FTTH weekly report delivery from the installed release
+After=network-online.target docker-desktop.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/steve/Downloads/noc_platform/.review-access/ftth-mail/run-ftth-weekly-reports.py --root /home/steve/Downloads/noc_platform --send
+UMask=0077
+TimeoutStartSec=10min
+NoNewPrivileges=true
+StandardOutput=append:/home/steve/Downloads/noc_platform/.review-access/ftth-mail/worker.log
+StandardError=append:/home/steve/Downloads/noc_platform/.review-access/ftth-mail/worker.log

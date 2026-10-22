@@ -9,6 +9,7 @@ from app.models.energy import EnergyImport, EnergyTrialEvent, EnergySourceRevisi
 from app.models.platform_health import PlatformHost, PlatformSample
 from app.models.knowledge import KnowledgeApproval, KnowledgeEvent
 from app.models.linked_documents import LinkedCollection, LinkedRevision, LinkedScan
+from app.models.ftth_reporting import FtthNetworkSnapshot, FtthDailyPlan, FtthPlanEvent, FtthReportDelivery
 from app.core.db import Base  # <-- Adjust this if your Base is somewhere else
 from app.core.config import settings
 from app.models.activity import ActivityEntry
