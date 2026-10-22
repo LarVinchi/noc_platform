@@ -62,7 +62,7 @@ export default function FTTHImportModal({ onClose, onImported }) {
           <form onSubmit={preview} className="space-y-3">
             <label htmlFor="intake-isp" className="block text-sm text-slate-300">ISP</label>
             <select id="intake-isp" value={isp} disabled={busy} onChange={(event) => { setIsp(event.target.value); setOrder(null); }} className={inputClass}>
-              <option value="MTNN">MTNN</option><option value="METROREACH">Metroreach</option><option value="MANGONET">Mangonet</option>
+              <option value="MTNN">MTNN</option><option value="METROREACH">Metroreach</option><option value="MANGONET">Mangonet</option><option value="TELEWYZ">Telewyz</option>
             </select>
             <label htmlFor="intake-text" className="block text-sm text-slate-300">Request text</label>
             <textarea id="intake-text" autoFocus required maxLength={20000} rows={9} value={rawText} disabled={busy}

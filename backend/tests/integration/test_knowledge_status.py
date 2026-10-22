@@ -20,4 +20,4 @@ def test_status_reports_pending_engine_and_respects_private_catalogue(api,monkey
     _,db=api
     expected=db.query(Document).filter(Document.visibility=='noc').count()
     assert client.get('/api/knowledge/status',headers=headers).json()['accessible_catalogue_documents']==expected
-    assert client.post('/api/knowledge/query',headers=headers,json={'question':'Access private knowledge'}).status_code==403
+    assert client.post('/api/knowledge/query',headers=headers,json={'question':'Access private knowledge','document_ids':[uploaded.json()['document_id']]}).status_code==503

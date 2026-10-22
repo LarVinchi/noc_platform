@@ -82,7 +82,7 @@ export default function GeographicNetwork() {
     const instance = L.map(container.current, { zoomControl: false }).setView([6.4468, 3.4725], 13);
     const streets = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, className: 'tiles-dark', attribution: '&copy; OpenStreetMap contributors' });
     const satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19, attribution: 'Imagery &copy; Esri, Maxar, Earthstar Geographics' });
-    streets.addTo(instance); L.control.layers({ 'Dark streets': streets, Satellite: satellite }, null, { position: 'topright' }).addTo(instance);
+    streets.addTo(instance); L.control.layers({ 'Streets': streets, Satellite: satellite }, null, { position: 'topright' }).addTo(instance);
     L.control.zoom({ position: 'bottomright' }).addTo(instance); L.control.scale({ imperial: false, position: 'bottomleft' }).addTo(instance);
     const zoomLabels = () => { const element = instance.getContainer(); element.classList.toggle('z-far', instance.getZoom() < 16); element.classList.toggle('z-mid', instance.getZoom() < 17); };
     instance.on('zoomend', zoomLabels); zoomLabels(); map.current = instance;

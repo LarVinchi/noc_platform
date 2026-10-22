@@ -17,6 +17,9 @@ RUNTIME_FILES = [
     'scripts/energy-upload-windows.ps1', 'docs/energy-windows-noc1.md',
     'scripts/noc-host-agent.py', 'scripts/install-host-monitoring.py',
     'scripts/deploy-review-release.py', 'docs/server-health.md',
+    'docs/linked-onedrive-intake.md',
+    'scripts/run-ftth-weekly-reports.py', 'docs/afl-ftth-workspace.md',
+    'deploy/systemd/noc-ftth-weekly-report.service', 'deploy/systemd/noc-ftth-weekly-report.timer',
 ]
 
 

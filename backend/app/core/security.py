@@ -59,6 +59,16 @@ def validate_token(token):
 
 
 def authenticate(headers, method, path):
+    if path == '/api/document-intake/ingest' and method == 'POST':
+        secret=settings.LINKED_COLLECTOR_TOKEN.get_secret_value()
+        if not settings.LINKED_DOCUMENTS_ENABLED or not settings.LINKED_COLLECTOR_COLLECTION_ID or not 32<=len(secret)<=512 or not secret.isascii() or any(c.isspace() for c in secret):
+            raise HTTPException(503,'Linked collector intake is not configured')
+        if len(headers.getlist('authorization'))!=1:
+            raise HTTPException(401,'Single collector credential required')
+        scheme,_,token=headers.get('authorization','').partition(' ')
+        if scheme.lower()!='bearer' or not token.isascii() or len(token)>512 or not compare_digest(token.encode(),secret.encode()):
+            raise HTTPException(401,'Invalid linked collector credential')
+        return {'id':'linked-collector:'+settings.LINKED_COLLECTOR_COLLECTION_ID,'verified':True,'roles':['LinkedCollector']}
     if path == '/api/platform-health/ingest' and method == 'POST':
         secret = settings.PLATFORM_AGENT_INGEST_TOKEN.get_secret_value()
         if len(secret) < 32:
@@ -89,7 +99,8 @@ def authenticate(headers, method, path):
     admin_write = any(path.startswith(prefix) for prefix in ("/api/monitoring/mappings", "/api/operations/engineers", "/api/operations/policies")) and method not in {"GET", "HEAD", "OPTIONS"}
     if (path.startswith("/api/audit") or path.startswith('/api/platform-health') or admin_write) and "NOC.Admin" not in roles:
         raise HTTPException(403, "Administrator role required")
-    if method not in {"GET", "HEAD", "OPTIONS"} and not roles.intersection({"NOC.Operator", "NOC.Admin"}):
+    read_query = method == 'POST' and path == '/api/knowledge/query'
+    if method not in {"GET", "HEAD", "OPTIONS"} and not read_query and not roles.intersection({"NOC.Operator", "NOC.Admin"}):
         raise HTTPException(403, "Operator role required")
     return actor
 

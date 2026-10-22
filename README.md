@@ -228,3 +228,7 @@ monitor a live inbox. See [the preview guide](docs/mail-preview.md).
 The stakeholder server can receive CI-verified releases after PRs merge into
 `main`. See [review CI/CD](docs/review-ci-cd.md) for the developer workflow,
 server timer, backup/rollback behavior and production deployment requirements.
+## AFL FTTH workspace
+
+The AFL-branded FTTH and provisioning workspace is available under `/ftth`, sharing the NOC sign-in and backend.
+See [workspace rules, migration and optional weekly mail setup](docs/afl-ftth-workspace.md).

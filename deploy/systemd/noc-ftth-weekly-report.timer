@@ -1,0 +1,10 @@
+[Unit]
+Description=Check whether the AFL FTTH weekly report is due
+
+[Timer]
+OnCalendar=*-*-* *:00/15:00 UTC
+Persistent=true
+Unit=noc-ftth-weekly-report.service
+
+[Install]
+WantedBy=timers.target

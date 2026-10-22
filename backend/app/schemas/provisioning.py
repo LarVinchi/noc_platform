@@ -136,6 +136,8 @@ class ServiceOrderResponse(BaseModel):
     nap_code: Optional[str] = None
     drop_cable_code: Optional[str] = None
     planned_install_date: Optional[datetime] = None
+    completion_date: Optional[datetime] = None
+    coverage_zone_name: Optional[str] = None
     
     class Config:
         from_attributes = True

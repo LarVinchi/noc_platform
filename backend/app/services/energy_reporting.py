@@ -4,6 +4,7 @@ from __future__ import annotations
 import datetime as dt
 import xml.etree.ElementTree as ET
 import zipfile
+import re
 from collections import defaultdict
 
 NS = {'m': 'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
@@ -133,25 +134,49 @@ def active(record):
     return record['status'] in ('ON', 'Unit Closure', 'Unit Start', 'Diesel Cycle Closure', 'Diesel Cycle Start')
 
 
+def comment_addition(record):
+    """Read an explicit quantity, not an intended purchase or a bare refill keyword."""
+    comment = record.get('comment') or ''
+    matches = list(re.finditer(r'\b(?:refill(?:ed|ing)?|top[\s-]*up|replenish(?:ed|ment)?|added)\s*(?:of\s*|with\s*|by\s*|[:=]\s*)?(\d+(?:,\d{3})*(?:\.\d+)?)\s*(litres?|liters?|ltrs?|l\b|kwh|units?)', comment, re.I))
+    matches.extend(re.finditer(r'\b(\d+(?:,\d{3})*(?:\.\d+)?)\s*(litres?|liters?|ltrs?|l\b|kwh|units?)\s*(?:(?:diesel|generator|geneator|was|were|of)\s+){0,3}(?:top[\s-]*up|refill(?:ed)?|added)\b', comment, re.I))
+    quantities, seen = [], set()
+    for match in matches:
+        if re.search(r'\b(no|not|planned|expected|requested|pending|cancelled|canceled)\b', comment[max(0, match.start()-35):match.start()], re.I):
+            continue
+        liquid = match[2].lower().startswith('l')
+        if liquid != (record['kind'] == 'gen'):
+            continue
+        quantity = float(match[1].replace(',', ''))
+        if 0 < quantity <= 10000000 and match.span(1) not in seen:
+            quantities.append(quantity); seen.add(match.span(1))
+    return quantities[0] if len(quantities) == 1 else None
+
+
 def events_for(records):
     """Identify additions; infer balance jumps only between consecutive source readings."""
     events, prior = [], {}
     for record in records:
-        key = record['source']
+        key = (record['site'], record['kind'], record['source'])
         prev = prior.get(key)
         opening, closing = record['opening'], record['closing']
+        stated = comment_addition(record)
+        incoming = prev and opening is not None and prev['closing'] is not None and opening > prev['closing'] + .01
         # A marker start follows a marker closure at the same timestamp.
-        if prev and opening is not None and prev['closing'] is not None and opening > prev['closing'] + .01:
+        if incoming:
             paired = ('Start' in record['status'] and 'Closure' in prev['status']
                       and prev['stop'] == record['start'])
+            consistent = stated is None or abs(stated - (opening - prev['closing'])) <= .01
             events.append({'site': record['site'], 'kind': record['kind'], 'time': iso(record['start']),
-                           'amount': opening - prev['closing'], 'row': record['row'],
-                           'previousRow': prev['row'], 'evidence': 'Paired cycle markers' if paired else 'Balance increase · verify',
-                           'confirmed': paired, 'comment': record['comment']})
-        if opening is not None and closing is not None and closing > opening + .01:
+                           'amount': stated or opening - prev['closing'], 'row': record['row'], 'inSession': False,
+                           'previousRow': prev['row'], 'evidence': 'Comment/opening balance mismatch · verify' if not consistent else 'Comment quantity at opening' if stated else 'Paired cycle markers' if paired else 'Balance increase · net addition, verify',
+                           'confirmed': (paired or stated is not None) and consistent, 'comment': record['comment']})
+        increased = opening is not None and closing is not None and closing > opening + .01
+        if increased or (stated is not None and not incoming):
+            amount = stated if stated is not None and not incoming else closing - opening
             events.append({'site': record['site'], 'kind': record['kind'], 'time': iso(record['stop'] or record['start']),
-                           'amount': closing - opening, 'row': record['row'], 'previousRow': None,
-                           'evidence': 'Increase within session · verify', 'confirmed': False, 'comment': record['comment']})
+                           'amount': amount, 'row': record['row'], 'previousRow': None, 'inSession': True,
+                           'evidence': 'Refill/top-up quantity in comment' if stated is not None and not incoming else 'Level increase · net addition, verify',
+                           'confirmed': stated is not None and not incoming, 'comment': record['comment']})
         # Retain chronology: missing readings break inference instead of bridging unknown sessions.
         prior[key] = record
     return events
@@ -160,9 +185,15 @@ def events_for(records):
 def make_report(records, day, all_events=None):
     begin, end = window(day)
     result = {'date': day, 'start': iso(begin), 'end': iso(end), 'sites': [], 'events': [], 'issues': []}
-    for event in all_events if all_events is not None else events_for(records):
+    source_events = all_events if all_events is not None else events_for(records)
+    event_index = defaultdict(list)
+    day_additions = defaultdict(float)
+    for event in source_events:
+        event_index[(event['site'], event['kind'], event['row'])].append(event)
+    for event in source_events:
         if begin < dt.datetime.fromisoformat(event['time']) <= end:
             result['events'].append(event)
+            day_additions[(event['site'], event['kind'], event['row'])] += event['amount']
     for site, info in SITES.items():
         selected, intervals, consumption = [], defaultdict(list), defaultdict(list)
         missing = defaultdict(int)
@@ -193,18 +224,26 @@ def make_report(records, day, all_events=None):
             elif duration and r['status'] != 'OFF':
                 issue(r, 'Unrecognised status: operating time excluded')
             opening, closing = r['opening'], r['closing']
+            additions = event_index[(site, r['kind'], r['row'])]
+            within = sum(e['amount'] for e in additions if e.get('inSession') and e['confirmed'])
+            inferred = any(e.get('inSession') and not e['confirmed'] for e in additions)
+            chart_addition = day_additions[(site, r['kind'], r['row'])]
+            comment = r.get('comment', '')
+            unquantified = (re.search(r'\b(refill(?:ed)?|top[\s-]*up)\b', comment, re.I)
+                and not re.search(r'\b(no|not|planned|expected|requested|pending|cancelled|canceled)\b', comment, re.I)
+                and comment_addition(r) is None and not any(not e.get('inSession') for e in additions))
             used = None
             if duration and is_active:
                 if opening is None or closing is None:
                     if r['kind'] == 'grid' or info['fuel'] == 'Diesel':
                         missing[r['kind']] += 1
                         issue(r, 'Consumption reading missing; usage total is partial')
-                elif closing > opening + .01:
+                elif inferred or unquantified or closing > opening + within + .01:
                     missing[r['kind']] += 1
-                    issue(r, 'Balance increased within session; consumption unresolved')
+                    issue(r, 'Refill/level increase shown separately; consumption needs an explicit, consistent addition quantity')
                 else:
                     fraction = duration / (stop - start).total_seconds()
-                    used = max(0, opening - closing) * fraction
+                    used = max(0, opening + within - closing) * fraction
                     consumption[r['kind']].append(used)
                     if fraction < 1:
                         issue(r, 'Session crosses reporting boundary; consumption prorated by time')
@@ -217,6 +256,8 @@ def make_report(records, day, all_events=None):
             selected.append({**{k: v for k, v in r.items() if k not in ('start', 'stop')},
                              'start': iso(start), 'stop': iso(stop), 'hours': duration / 3600 if is_active else 0,
                              'used': used, 'clipStart': iso(a), 'clipStop': iso(b), 'active': is_active})
+            selected[-1].update(addition=chart_addition, additionConfirmed=all(e['confirmed'] for e in additions),
+                                additionLabel='Diesel refill' if r['kind'] == 'gen' else 'EKEDC top-up')
         hours = {k: union_seconds(intervals[k]) / 3600 for k in ('grid', 'gen')}
         for kind in ('grid', 'gen'):
             summed = sum((b - a).total_seconds() for a, b in intervals[kind]) / 3600
@@ -229,6 +270,8 @@ def make_report(records, day, all_events=None):
             'overlapHours': max(0, hours['grid'] + hours['gen'] - covered),
             'gridUsed': sum(consumption['grid']) if consumption['grid'] else None,
             'dieselUsed': sum(consumption['gen']) if consumption['gen'] and info['fuel'] == 'Diesel' else None,
+            'gridAdded': sum(e['amount'] for e in result['events'] if e['site'] == site and e['kind'] == 'grid'),
+            'dieselAdded': sum(e['amount'] for e in result['events'] if e['site'] == site and e['kind'] == 'gen' and info['fuel'] == 'Diesel'),
             'gridPartial': missing['grid'] > 0, 'dieselPartial': missing['gen'] > 0,
             'meterHours': sum(meter_hours) if meter_hours else None,
             'records': selected, 'issues': issues,

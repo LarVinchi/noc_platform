@@ -37,6 +37,7 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
       - run: npm ci
+      - run: npm test
       - run: npm run lint
       - run: npm run build
 
@@ -73,6 +74,7 @@ jobs:
         run: |
           docker run --rm --entrypoint python noc-backend:verify -c "import os,importlib.util; from io import BytesIO; from xhtml2pdf import pisa; assert os.getuid()==10001; assert importlib.util.find_spec('pytest') is None; result=BytesIO(); assert not pisa.CreatePDF('<p>NOC runtime check</p>',dest=result).err; assert result.getvalue().startswith(b'%PDF')"
           docker run --rm --add-host api:127.0.0.1 --entrypoint nginx noc-frontend:verify -t
+          docker run --rm -v "$PWD/deploy/review-gateway.nginx.conf:/etc/nginx/nginx.conf:ro" --entrypoint nginx noc-frontend:verify -t
       - name: Package the tested main-branch images
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: |

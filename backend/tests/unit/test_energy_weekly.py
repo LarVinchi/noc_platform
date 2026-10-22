@@ -33,16 +33,19 @@ class WeeklyTests(unittest.TestCase):
         self.assertEqual(report['start'], '2026-10-04T23:59:59')
         self.assertEqual(report['end'], '2026-10-11T23:59:59')
 
-    def test_missing_day_is_not_zero_or_average_over_six(self):
+    def test_missing_day_is_zero_and_average_uses_seven_calendar_days(self):
         site = self.report(records()[:-2])['sites'][0]
-        self.assertIsNone(site['days'][-1]['gridHours'])
-        self.assertIsNone(site['averageGridHours'])
-        self.assertTrue(site['gridPartial'])
+        self.assertEqual(site['days'][-1]['gridHours'], 0)
+        self.assertAlmostEqual(site['averageGridHours'], 108/7)
+        self.assertEqual(site['zeroDays'], 1)
+        self.assertFalse(site['gridPartial'])
         self.assertEqual(site['gridHours'], 108)
 
-    def test_in_progress_withholds_average(self):
+    def test_in_progress_average_counts_calendar_days_reached(self):
         site = self.report(records(), dt.datetime(2026, 10, 10, tzinfo=WAT))['sites'][0]
-        self.assertIsNone(site['averageGridHours'])
+        self.assertEqual(site['averageDays'], 6)
+        self.assertEqual(site['averageGridHours'], 15)
+        self.assertIsNone(site['days'][-1]['gridHours'])  # Future Sunday is excluded.
 
     def test_missing_reading_preserves_hours(self):
         rows = records()
@@ -56,8 +59,34 @@ class WeeklyTests(unittest.TestCase):
         report = self.report([])
         for site in report['sites']:
             self.assertEqual(len(site['days']), 7)
-            self.assertIsNone(site['gridHours'])
-            self.assertIsNone(site['dieselUsed'])
+            self.assertEqual(site['gridHours'], 0)
+            self.assertEqual(site['averageGridHours'], 0)
+            self.assertEqual(site['dieselUsed'], 0 if site['fuel'] == 'Diesel' else None)
+
+    def test_open_record_preserves_provisional_seven_day_logged_average(self):
+        rows = records()
+        rows.append({**rows[-1], 'row': 100, 'stop': None})
+        site = self.report(rows)['sites'][0]
+        self.assertEqual(site['averageGridHours'], 18)
+        self.assertEqual(site['averageGenHours'], 6)
+        self.assertTrue(site['gridPartial'])
+        self.assertTrue(site['genPartial'])
+        self.assertIsNone(site['gridAvailabilityPercent'])
+        self.assertIsNone(site['averageDieselUsed'])
+
+    def test_no_completed_generator_runs_average_to_zero_on_recorded_days(self):
+        rows = [r for r in records() if r['kind'] == 'grid']
+        site = self.report(rows)['sites'][0]
+        self.assertEqual(site['averageGenHours'], 0)
+        self.assertEqual(site['averageGridHours'], 18)
+
+    def test_open_record_keeps_average_visible_but_qualifies_zero_runtime(self):
+        rows = records()[:-2]
+        rows.append({**records()[-2], 'stop': None})
+        site = self.report(rows)['sites'][0]
+        self.assertAlmostEqual(site['averageGridHours'], 108/7)
+        self.assertAlmostEqual(site['averageGenHours'], 36/7)
+        self.assertTrue(site['gridPartial'])
 
     def test_monday_required(self):
         with self.assertRaises(ValueError):

@@ -63,7 +63,9 @@ def test_workbook_import_roles_duplicate_revision_and_reports(api, monkeypatch):
     assert len(site['days']) == 7
     assert site['days'][5]['gridHours'] == report['sites'][0]['gridHours']
     assert site['gridHours'] == 12
-    assert site['averageGridHours'] is None
+    # Unrecorded elapsed days contribute zero; retain the partial-data flag.
+    assert site['averageGridHours'] == 12 / 7
+    assert site['days'][0]['gridHours'] == 0
     assert site['gridPartial']
     assert client.post('/api/energy/imports',files={'file':('broken.xlsx',b'not a zip')}).status_code == 422
     from app.core import security
@@ -87,7 +89,11 @@ def test_weekly_missing_import_date_validation_and_production_trial_guard(api, m
     response = client.get('/api/energy/weekly', params={'week_start': '2026-06-29', 'source': 'trial'})
     assert response.status_code == 200, response.text
     assert response.json()['mode'] == 'trial'
-    assert response.json()['sites'][0]['gridHours'] is None
+    site = response.json()['sites'][0]
+    assert site['gridHours'] == 0
+    assert site['averageGridHours'] == 0
+    assert site['zeroDays'] == 7
+    assert site['daysWithRecords'] == 0
     from app.core.config import settings
     from app.core import security
     monkeypatch.setattr(settings, 'ENVIRONMENT', 'production')

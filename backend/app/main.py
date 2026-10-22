@@ -20,6 +20,8 @@ from app.api.routers import mail
 from app.api.routers import knowledge
 from app.api.routers import corrections, energy
 from app.api.routers import platform_health
+from app.api.routers import document_intake
+from app.api.routers import ftth_reporting, ftth_planning
 
 # CRM & Allocation Models
 from app.models.crm import Customer, Service
@@ -84,6 +86,9 @@ app.include_router(knowledge.router, prefix="/api")
 app.include_router(corrections.router, prefix="/api")
 app.include_router(energy.router, prefix="/api")
 app.include_router(platform_health.router, prefix="/api")
+app.include_router(document_intake.router, prefix="/api")
+app.include_router(ftth_reporting.router, prefix="/api")
+app.include_router(ftth_planning.router, prefix="/api")
 
 @app.get("/")
 def root():

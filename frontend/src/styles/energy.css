@@ -24,7 +24,7 @@
 .energy-weekly-heading h2 { margin: 8px 0; font-size: 26px; }
 .energy-weekly-heading p, .energy-weekly-note { color: var(--text-secondary, #a5b7c9); }
 .energy-weekly-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
-.energy-weekly-panel { min-width: 0; overflow: hidden; }
+.energy-weekly-panel { min-width: 0; overflow: hidden; display: flex; flex-direction: column; }
 .energy-weekly-panel canvas { display: block; width: 100%; height: auto; }
 .energy-weekly-pivot { overflow-x: auto; padding: 0 16px; }
 .energy-weekly-pivot table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -49,9 +49,16 @@
 .energy-weekly-details dd { margin: 5px 0 0; font-size: 13px; font-weight: 650; overflow-wrap: anywhere; font-variant-numeric: tabular-nums; }
 .energy-weekly-details small { display: block; margin-top: 16px; font-size: 10px; opacity: .7; }
 .energy-weekly-panel > .energy-weekly-actions { justify-content: flex-end; padding: 12px 16px; }
+.energy-weekly-panel > .energy-weekly-actions:last-child { margin-top: auto; }
+.energy-weekly-panel > header, .energy-weekly-panel > canvas, .energy-weekly-panel > .energy-weekly-actions { flex-shrink: 0; }
+.energy-weekly-pivot th:first-child { min-width: 88px; }
 .energy-copy-button { min-width: 126px; justify-content: center; }
 .energy-chart .energy-copy-button.is-copied { background: #dcfce7; color: #166534; border-color: #86efac; }
 @media (max-width: 560px) { .energy-weekly-table-layout { grid-template-columns: 1fr; } .energy-weekly-details dl { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; } .energy-weekly-details dl > div + div { margin-top: 0; } }
 .energy-weekly-panel > div:last-child { display: flex; gap: 8px; padding: 16px; flex-wrap: wrap; }
 .energy-weekly .energy-toolbar label:has(input[type="checkbox"]) { display: flex; flex-direction: row; align-items: center; gap: 8px; }
 @media (max-width: 1000px) { .energy-weekly-grid { grid-template-columns: 1fr; } }
+
+.energy-date-picker{display:flex;gap:8px;align-items:end;flex-wrap:wrap}.energy-date-picker form{display:flex;gap:8px;align-items:end}.energy-date-picker input[type=date]{min-width:155px}.energy-date-picker>label{min-width:150px}@media(max-width:600px){.energy-date-picker{width:100%}.energy-date-picker form{flex:1}.energy-date-picker form label{flex:1}.energy-date-picker>label{width:100%}}
+
+.energy-addition-value{color:#15803d;font-weight:650}.energy-chart--dark .energy-addition-value,.energy-chart--excel .energy-addition-value{color:#4ade80}

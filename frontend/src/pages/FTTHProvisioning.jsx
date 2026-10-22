@@ -145,7 +145,7 @@ const FTTHProvisioning = ({identity}) => {
         </div>
         
         <div className="flex items-center space-x-4">
-          <Link to="/ftth-operations" className="rounded-lg border border-cyan-800 px-3 py-2 text-sm text-cyan-300">Totals &amp; incidents</Link>
+          <Link to="/ftth/history" className="rounded-lg border border-cyan-800 px-3 py-2 text-sm text-cyan-300">Totals &amp; incidents</Link>
           <div className="flex bg-charcoal-900 p-1 rounded-lg border border-charcoal-700">
             <button onClick={() => setViewType('list')} className={`p-2 rounded flex items-center transition-colors ${viewType === 'list' ? 'bg-charcoal-700 text-cyan-400 shadow' : 'text-gray-500 hover:text-white'}`}>
               <List size={16} className="mr-2" /> Table
@@ -154,8 +154,8 @@ const FTTHProvisioning = ({identity}) => {
               <Layout size={16} className="mr-2" /> Board
             </button>
           </div>
-          <button onClick={() => setIsImportOpen(true)} className="rounded-lg border border-cyan-600 px-4 py-2.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-900/30">Paste request</button>
-          <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-cyan-900/50">
+          <button disabled={!canWrite} onClick={() => setIsImportOpen(true)} className="rounded-lg border border-cyan-600 px-4 py-2.5 text-sm font-semibold text-cyan-300 hover:bg-cyan-900/30">Paste request</button>
+          <button disabled={!canWrite} onClick={() => setIsCreateModalOpen(true)} className="flex items-center bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-colors shadow-lg shadow-cyan-900/50">
             <Plus size={16} className="mr-2" /> New FTTH Request
           </button>
         </div>
@@ -300,7 +300,7 @@ const FTTHProvisioning = ({identity}) => {
               <div><label className="block text-xs font-medium text-gray-400 mb-1">Customer Name *</label><input type="text" required value={newOrder.customer_name} onChange={(e) => setNewOrder({...newOrder, customer_name: e.target.value})} className="w-full bg-charcoal-800 border border-charcoal-700 rounded p-2 text-white text-sm" /></div>
               <div><label className="block text-xs font-medium text-gray-400 mb-1">Service Address *</label><input type="text" required value={newOrder.service_address} onChange={(e) => setNewOrder({...newOrder, service_address: e.target.value})} className="w-full bg-charcoal-800 border border-charcoal-700 rounded p-2 text-white text-sm" /></div>
               <div className="grid grid-cols-2 gap-4">
-                <div><label className="block text-xs font-medium text-gray-400 mb-1">ISP</label><select value={newOrder.isp} onChange={(e) => setNewOrder({...newOrder, isp: e.target.value})} className="w-full bg-charcoal-800 border border-charcoal-700 rounded p-2 text-white text-sm"><option value="METROREACH">Metroreach</option><option value="MTNN">MTNN</option><option value="MANGONET">Mangonet</option></select></div>
+                <div><label className="block text-xs font-medium text-gray-400 mb-1">ISP</label><select value={newOrder.isp} onChange={(e) => setNewOrder({...newOrder, isp: e.target.value})} className="w-full bg-charcoal-800 border border-charcoal-700 rounded p-2 text-white text-sm"><option value="METROREACH">Metroreach</option><option value="MTNN">MTNN</option><option value="MANGONET">Mangonet</option><option value="TELEWYZ">Telewyz</option></select></div>
                 <div><label className="block text-xs font-medium text-gray-400 mb-1">Bandwidth</label><input type="text" placeholder="e.g. 50Mbps" required value={newOrder.bandwidth} onChange={(e) => setNewOrder({...newOrder, bandwidth: e.target.value})} className="w-full bg-charcoal-800 border border-charcoal-700 rounded p-2 text-white text-sm" /></div>
               </div>
               {newOrder.isp === 'MTNN' && (<div><label className="block text-xs font-medium text-gray-400 mb-1">FN Number (MTNN Specific)</label><input type="text" placeholder="e.g. FN509179" value={newOrder.fn_number} onChange={(e) => setNewOrder({...newOrder, fn_number: e.target.value})} className="w-full bg-charcoal-800 border border-charcoal-700 rounded p-2 text-white text-sm" /></div>)}

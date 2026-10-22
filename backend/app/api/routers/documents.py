@@ -3,15 +3,17 @@ from uuid import UUID, uuid4
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Query
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
-from sqlalchemy import or_
+from sqlalchemy import or_, func
 from sqlalchemy.orm import Session
 from app.core.db import get_db
 from app.core.security import actor_context
 from app.models.documents import Document, DocumentVersion
+from app.models.knowledge import KnowledgeApproval
 from app.models.provisioning import ServiceOrder
 from app.models.crm import Service
 from app.models.incidents import Incident
 from app.services import document_storage as storage
+from app.services import linked_documents as links
 
 router = APIRouter(prefix='/documents',tags=['Private documents'])
 TYPES = {'customer_handover','installation_acceptance','installation_evidence','shift_handover','rca','work_order','daily_report','weekly_report','knowledge','source_workbook','other'}
@@ -43,10 +45,11 @@ def version_row(value):
     return {column.name:getattr(value,column.name) for column in value.__table__.columns if column.name!='storage_key'}
 
 
-def document_row(record,latest=None):
+def document_row(record,latest=None,approved=False):
     return {column.name:getattr(record,column.name) for column in record.__table__.columns} | {
         'latest_version':version_row(latest) if latest else None,
-        'review_state':'Unreviewed source','rag_state':'Not indexed','scan_state':'Malware scan not integrated'}
+        'review_state':'Approved for knowledge' if approved else 'Unreviewed source',
+        'rag_state':'Indexed for knowledge' if approved else 'Not indexed','scan_state':'Malware scan not integrated'}
 
 
 @router.get('')
@@ -62,9 +65,11 @@ def catalogue(search: str = Query('',max_length=200), document_type: str | None 
     total = query.count()
     records = query.order_by(Document.created_at.desc(),Document.document_id).offset(offset).limit(limit).all()
     ids = [value.document_id for value in records]
-    versions = db.query(DocumentVersion).filter(DocumentVersion.document_id.in_(ids)).order_by(DocumentVersion.document_id,DocumentVersion.revision.desc()).distinct(DocumentVersion.document_id).all() if ids else []
+    newest = db.query(DocumentVersion.document_id,func.max(DocumentVersion.revision).label('revision')).filter(DocumentVersion.document_id.in_(ids)).group_by(DocumentVersion.document_id).subquery()
+    versions = db.query(DocumentVersion).join(newest,(newest.c.document_id == DocumentVersion.document_id) & (newest.c.revision == DocumentVersion.revision)).all() if ids else []
     latest = {value.document_id:value for value in versions}
-    return {'total':total,'items':[document_row(value,latest.get(value.document_id)) for value in records],'offset':offset,'limit':limit}
+    approved = {value.version_id for value in db.query(KnowledgeApproval).filter(KnowledgeApproval.version_id.in_([v.version_id for v in versions]),KnowledgeApproval.approved.is_(True)).all()} if versions else set()
+    return {'total':total,'items':[document_row(value,latest.get(value.document_id),latest[value.document_id].version_id in approved if value.document_id in latest else False) for value in records],'offset':offset,'limit':limit}
 
 
 def add_version(db,record,upload,note):
@@ -122,7 +127,8 @@ def upload_document(file: UploadFile = File(...), title: str = Form(...,min_leng
 def detail(identifier: UUID,db: Session = Depends(get_db)):
     record = document(db,identifier)
     versions = db.query(DocumentVersion).filter_by(document_id=identifier).order_by(DocumentVersion.revision.desc()).all()
-    result = document_row(record,versions[0] if versions else None)
+    approval = db.get(KnowledgeApproval,versions[0].version_id) if versions else None
+    result = document_row(record,versions[0] if versions else None,bool(approval and approval.approved))
     result['versions'] = [version_row(value) for value in versions]
     return result
 
@@ -154,5 +160,22 @@ def download(identifier: UUID,version_id: UUID,db: Session = Depends(get_db)):
     version = db.query(DocumentVersion).filter_by(document_id=identifier,version_id=version_id).first()
     if not version:
         raise HTTPException(404,'Document version not found')
+    if version.storage_key.startswith('linked/'):
+        raise HTTPException(409,'Original retained in OneDrive. Use source provenance; no server copy or exact historical download is available.')
     return FileResponse(storage.verified_path(version),media_type='application/octet-stream',filename=version.original_filename,
         headers={'Cache-Control':'private, no-store','X-Content-Type-Options':'nosniff'},content_disposition_type='attachment')
+
+
+@router.get('/{identifier}/versions/{version_id}/origin')
+def origin(identifier:UUID,version_id:UUID,db:Session=Depends(get_db)):
+    document(db,identifier)
+    version=db.query(DocumentVersion).filter_by(document_id=identifier,version_id=version_id).first()
+    if not version: raise HTTPException(404,'Document version not found')
+    if not version.storage_key.startswith('linked/'):
+        return {'kind':'retained_upload','exact_original_available':True}
+    row=links.linked(db,version)
+    if not row: raise HTTPException(409,'Linked origin is disabled or unavailable')
+    return {'kind':'onedrive_link','path':row.source_path,'original_url':row.original_url,'observed_at':row.observed_at,
+        'original_sha256':version.sha256,'extraction_sha256':row.extraction_sha256,'fresh':links.usable(db,version),
+        'exact_original_available':False,'identity_evidence':'Trusted collector attestation; server did not receive original bytes',
+        'notice':'OneDrive remains authoritative. A link opens the current file; this local collector cannot verify a historical cloud revision.'}

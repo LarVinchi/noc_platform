@@ -28,6 +28,6 @@ export default function CopyImageButton({ label, image, filename, onNotice }) {
     timer.current = setTimeout(() => { if (mounted.current) setState('idle'); }, 1000);
   }
   return <button className={`response-button energy-copy-button ${state === 'copied' ? 'is-copied' : ''}`} disabled={state === 'copying'} onClick={copy} aria-label={state === 'idle' ? label : `${label}: ${state}`}>
-    {state === 'copied' ? <Check size={14} /> : <Copy size={14} />}<span aria-live="polite">{state === 'copied' ? 'Copied' : state === 'copying' ? 'Copying…' : state === 'downloaded' ? 'Downloaded' : label}</span>
+    {state === 'copied' ? <Check size={14} /> : <Copy size={14} />}<span aria-live="polite">{state === 'copied' ? 'Copied' : state === 'copying' ? 'Copying…' : state === 'downloaded' ? 'Downloaded' : 'Copy'}</span>
   </button>;
 }

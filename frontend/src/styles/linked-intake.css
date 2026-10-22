@@ -1,0 +1,24 @@
+.linked-intake .response-notice{display:flex;align-items:center;gap:12px}
+.linked-intake-controls{padding:20px;display:flex;justify-content:space-between;gap:20px;flex-wrap:wrap}
+.linked-intake-controls form,.linked-intake-controls>div,.linked-card-actions,.linked-pagination{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.linked-intake-controls label{display:grid;gap:6px;font-size:13px}
+.linked-intake-controls input:not([type=file]){padding:10px 12px;background:var(--panel);color:inherit;border:1px solid var(--line);border-radius:8px;min-width:230px}
+.linked-file-input{max-width:230px;font-size:12px}
+.linked-collections{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin:20px 0}
+.linked-collections>section{padding:20px;min-width:0}
+.linked-collections h2,.linked-table-panel h2{font-size:17px;margin:0 0 12px}
+.linked-collections code{display:block;overflow-wrap:anywhere;margin:12px 0;font-size:12px}
+.linked-collections p,.linked-collections small{font-size:12px}
+.linked-table-panel,.linked-extraction{padding:20px;margin:20px 0}
+.linked-table-panel h2 small{font-weight:400;margin-left:12px}
+.linked-table-scroll{overflow:auto}
+.linked-table-panel table{width:100%;border-collapse:collapse;text-align:left;font-size:13px}
+.linked-table-panel th,.linked-table-panel td{padding:14px 10px;vertical-align:top;border-bottom:1px solid var(--line)}
+.linked-table-panel td small,.linked-table-panel td span{display:block;margin-top:6px;font-size:12px;overflow-wrap:anywhere}
+.linked-pagination{justify-content:space-between;margin-top:18px;font-size:12px}
+.linked-extraction header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.linked-extraction>small{display:block;overflow-wrap:anywhere;margin-bottom:8px}
+.linked-extraction article{padding:16px 0;border-bottom:1px solid var(--line)}
+.linked-extraction pre{white-space:pre-wrap;overflow-wrap:anywhere;font:inherit;line-height:1.6}
+.linked-extraction p{font-size:13px;line-height:1.6}
+@media(max-width:700px){.linked-intake-controls form{width:100%;align-items:stretch;flex-direction:column}.linked-intake-controls input:not([type=file]){min-width:0;width:100%;box-sizing:border-box}.linked-extraction header{align-items:flex-start;flex-direction:column}}

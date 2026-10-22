@@ -105,7 +105,7 @@ def link_incident(identifier: UUID,data: LinkInput,db: Session=Depends(get_db)):
 
 
 @router.get('/reports')
-def reports(start: AwareDatetime|None=None,end: AwareDatetime|None=None,isp: Literal['MTNN','METROREACH','MANGONET']|None=None,db: Session=Depends(get_db)):
+def reports(start: AwareDatetime|None=None,end: AwareDatetime|None=None,isp: Literal['MTNN','METROREACH','MANGONET','TELEWYZ']|None=None,db: Session=Depends(get_db)):
     end=end or now_utc();start=start or end-timedelta(days=30)
     if end>now_utc() or start>=end or end-start>timedelta(days=366):
         raise HTTPException(422,'Choose a past reporting window of up to 366 days')
