@@ -30,7 +30,9 @@ def provider_settings(path):
                 result[name.strip()]=value.strip().strip('"\'')
     key=result.get('GEMINI_API_KEY','')
     model=result.get('RAG_GEMINI_MODEL','gemini-3.5-flash-lite')
-    if key and not re.fullmatch(r'[A-Za-z0-9_-]{10,300}',key):raise ValueError('Invalid private Gemini credential format')
+    # Treat the provider credential as opaque; do not assume its alphabet or prefix.
+    # Exclude env-file interpolation, comments, quotes and control characters.
+    if key and not re.fullmatch(r'[A-Za-z0-9_./+=-]{10,300}',key):raise ValueError('Invalid private Gemini credential format')
     if not re.fullmatch(r'gemini-[a-z0-9.-]{1,80}',model):raise ValueError('Invalid generation model identifier')
     return key,model
 
