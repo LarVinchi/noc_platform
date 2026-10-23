@@ -33,6 +33,20 @@ def test_installer_rejects_wrong_input_invalid_image_or_multiline_credential(tmp
     with pytest.raises(ValueError):installer.provider_settings(provider)
 
 
+@pytest.mark.parametrize('key', ['synthetic.key_123456789', 'synthetic/key+123456789='])
+def test_provider_settings_preserves_credential_punctuation(tmp_path,key):
+    provider=tmp_path/'provider.env'
+    provider.write_text('GEMINI_API_KEY='+key+'\n')
+    assert installer.provider_settings(provider)[0]==key
+
+
+@pytest.mark.parametrize('suffix', ['${OTHER}', ' # comment', '\\escape', '\ttext', '\x00'])
+def test_provider_settings_rejects_env_interpolation_and_control_characters(tmp_path,suffix):
+    provider=tmp_path/'provider.env'
+    provider.write_text('GEMINI_API_KEY=synthetic_key_123'+suffix+'\n')
+    with pytest.raises(ValueError):installer.provider_settings(provider)
+
+
 def test_monitoring_refresh_preserves_enabled_knowledge_overlay(tmp_path):
     spec=importlib.util.spec_from_file_location('monitoring_installer',Path(__file__).parents[1]/'install-host-monitoring.py')
     monitoring=importlib.util.module_from_spec(spec);spec.loader.exec_module(monitoring)
