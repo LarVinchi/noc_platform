@@ -82,11 +82,11 @@ test('Excel keeps template colours; daily has one baseline and weekly has dual-a
   const report={date:'2026-10-19',weekStart:'2026-10-19',weekEnd:'2026-10-25',elapsed:true,averageDays:7,events:[]};
   const grids=(d,left=85,right=1115)=>d.strokes.filter(s=>s.path.length===2&&s.path[0][0]===left&&s.path[1][0]===right&&s.path[0][1]===s.path[1][1]);
   const daily=drawing();drawChart(daily.canvas,site,'gen','excel',report);
-  assert.equal(grids(daily,27,1173).length,1);
+  assert.equal(grids(daily).length,1);
   const runtime=daily.rects.find(r=>r.ink==='#5b9bd5'&&r.values[2]>12);
   const consumption=daily.rects.find(r=>r.ink==='#ed7d31'&&r.values[2]>12);
-  assert.equal(runtime.values[2],1146*.23,'restore full-width category bars');
-  assert.ok(Math.abs(consumption.values[3]/runtime.values[3]-6)<1e-10,'original shared Excel scale');
+  assert.equal(runtime.values[2],1030*.23,'keep grouped bars wide within calibrated axis margins');
+  assert.ok(runtime.values[3]>consumption.values[3],'hours have an independent scale from litres');
   assert.ok(consumption.values[1]>runtime.values[1],'daily consumption still descends from the baseline');
   assert.ok(daily.rects.some(r=>r.ink==='#ed7d31'));
   const weekly=drawing();drawWeeklyChart(weekly.canvas,report,site,'gen','excel');
@@ -101,4 +101,25 @@ test('Excel keeps template colours; daily has one baseline and weekly has dual-a
   assert.ok(weekly.texts.includes('GENERATOR RUNTIME · HRS'));
   assert.ok(weekly.texts.includes('L · BALANCE CHANGE'));
   assert.ok(!weekly.texts.some(t=>/lower band|consumption and additions|^Usage:/.test(t)));
+});
+
+test('daily runtime keeps its height when refill grows and both quantity directions use one scale',()=>{
+  for(const mode of ['excel','light','dark']){
+    const site={id:'PROJN01',fuel:'Diesel',genHours:6,dieselUsed:29.5,issues:[],
+      records:[{kind:'gen',row:1,start:'2026-10-17T17:00:00',stop:'2026-10-17T23:00:00',active:true,hours:6,used:29.5,addition:50}]};
+    const first=drawing();drawChart(first.canvas,site,'gen',mode,{date:'2026-10-17'});
+    site.records[0].addition=5000;
+    const second=drawing();drawChart(second.canvas,site,'gen',mode,{date:'2026-10-17'});
+    const bars=(d,ink)=>d.rects.filter(r=>r.ink===ink&&r.values[1]>120&&r.values[2]>20);
+    assert.equal(bars(first,'#5b9bd5')[0].values[3],bars(second,'#5b9bd5')[0].values[3]);
+    assert.ok(first.texts.includes('HOURS')&&first.texts.includes('L · REFILL / USAGE'));
+    const right=second.textPositions.filter(t=>t.x===1127);
+    assert.ok(right.some(t=>Number(t.value)>=5000),'quantity ticks follow the largest daily reading');
+    assert.ok(second.textPositions.some(t=>t.x===73&&Number(t.value)>=6),'left ticks reflect hours');
+    if(mode==='excel'){
+      const consumption=bars(first,'#ed7d31')[0],addition=bars(first,'#4ade80')[0];
+      assert.ok(Math.abs(consumption.values[3]/addition.values[3]-29.5/50)<1e-10);
+      assert.ok(right.some(t=>Number(t.value)<0));
+    }
+  }
 });
