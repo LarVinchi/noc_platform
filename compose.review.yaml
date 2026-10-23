@@ -19,6 +19,9 @@ x-backend: &backend
     KNOWLEDGE_ENABLED: ${KNOWLEDGE_ENABLED:-false}
     KNOWLEDGE_SERVICE_URL: ${KNOWLEDGE_SERVICE_URL:-}
     KNOWLEDGE_SERVICE_TOKEN: ${KNOWLEDGE_SERVICE_TOKEN:-}
+    KNOWLEDGE_REVIEW_ENABLED: ${KNOWLEDGE_REVIEW_ENABLED:-false}
+    KNOWLEDGE_REVIEW_URL: ${KNOWLEDGE_REVIEW_URL:-}
+    KNOWLEDGE_REVIEW_TOKEN: ${KNOWLEDGE_REVIEW_TOKEN:-}
     LINKED_DOCUMENTS_ENABLED: ${LINKED_DOCUMENTS_ENABLED:-false}
     LINKED_COLLECTOR_COLLECTION_ID: ${LINKED_COLLECTOR_COLLECTION_ID:-}
     LINKED_COLLECTOR_TOKEN: ${LINKED_COLLECTOR_TOKEN:-}
@@ -35,6 +38,29 @@ x-backend: &backend
     options: {max-size: 10m, max-file: '3'}
 
 services:
+  knowledge-review:
+    image: noc-review-backend:local
+    profiles: [knowledge-review]
+    command: [python, -m, app.review_knowledge_worker]
+    environment:
+      RAG_REVIEW_ASSESSMENT: /assessment
+      RAG_REVIEW_STATE: /state
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    mem_limit: 768m
+    cpus: 1
+    pids_limit: 128
+    healthcheck:
+      test: [CMD, python, -c, "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health/live', timeout=5)"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+    logging: *logging
+
   db:
     image: postgis/postgis:15-3.3
     environment:

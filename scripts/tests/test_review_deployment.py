@@ -30,6 +30,14 @@ def test_stage_history_and_private_overlay_are_explicit(tmp_path):
     assert str(overlay) not in deployer.compose(tmp_path)
     (overlay.parent/'enabled').write_text('enabled')
     assert str(overlay) in deployer.compose(tmp_path)
+    knowledge=tmp_path/'.review-access/knowledge/compose.json'
+    knowledge.parent.mkdir(parents=True)
+    knowledge.write_text('{}')
+    assert str(knowledge) not in deployer.compose(tmp_path)
+    (knowledge.parent/'enabled').write_text('enabled')
+    command=deployer.compose(tmp_path)
+    assert str(knowledge) in command and '--profile' in command and 'knowledge-review' in command
+    assert str(overlay) in command
 
 
 def manifest():

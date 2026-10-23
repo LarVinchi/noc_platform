@@ -13,6 +13,7 @@ import Documents from '../pages/Documents';
 import FtthOperations from '../pages/FtthOperations';
 import MailTriage from '../pages/MailTriage';
 import ApprovedKnowledge from '../pages/ApprovedKnowledge';
+import ReviewKnowledge from '../pages/ReviewKnowledge';
 import LinkedDocumentIntake from '../pages/LinkedDocumentIntake';
 import FtthDashboard from '../pages/FtthDashboard';
 import FtthDailyPlans from '../pages/FtthDailyPlans';
@@ -44,6 +45,7 @@ export default function NocRoutes({ identity }) {
     <Route path="/ftth-operations" element={<Navigate to="/ftth/history" replace/>} />
     <Route path="/mail" element={<MailTriage identity={identity} />} />
     <Route path="/knowledge" element={<ApprovedKnowledge identity={identity} />} />
+    <Route path="/knowledge/review" element={<ReviewKnowledge identity={identity} />} />
     <Route path="/audit" element={<AuditHistory />} />
     <Route path="/energy" element={<EnergyOperations identity={identity} />} />
     <Route path="/server-health" element={<ServerHealth identity={identity} />} />

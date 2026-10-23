@@ -20,6 +20,9 @@ class Settings(BaseSettings):
     KNOWLEDGE_ENABLED: bool = False
     KNOWLEDGE_SERVICE_URL: str = ""
     KNOWLEDGE_SERVICE_TOKEN: SecretStr = SecretStr("")
+    KNOWLEDGE_REVIEW_ENABLED: bool = False
+    KNOWLEDGE_REVIEW_URL: str = ""
+    KNOWLEDGE_REVIEW_TOKEN: SecretStr = SecretStr("")
     LINKED_DOCUMENTS_ENABLED: bool = False
     LINKED_COLLECTOR_COLLECTION_ID: str = ""
     LINKED_COLLECTOR_TOKEN: SecretStr = SecretStr("")

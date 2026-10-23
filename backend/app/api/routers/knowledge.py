@@ -58,6 +58,7 @@ def status(db: Session = Depends(get_db)):
     rows = catalogue(db).all()
     approved = sum(bool(a and a.approved and links.usable(db,v)) for _,v,a in rows)
     return {'rag_connected': connected, 'query_available': connected and approved > 0,
+        'review_lab_available':settings.KNOWLEDGE_REVIEW_ENABLED and settings.ENVIRONMENT=='development' and settings.AUTH_MODE=='preview' and is_admin(),
         'linked_intake_available':settings.LINKED_DOCUMENTS_ENABLED and is_admin(),
         'generation_available': connected, 'approval_available': worker.configured() and is_admin(),
         'draft_generation_available': False, 'case_query_available': False,
