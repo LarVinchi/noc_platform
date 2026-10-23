@@ -61,6 +61,16 @@ def prepare(root, host_id, port):
     return config, state
 
 
+def compose_command(docker, root, runtime, state):
+    command = docker+['compose', '-p', 'noc-review', '--env-file', str(root/'.env.review'),
+        '-f', str(runtime/'compose.review.yaml'), '-f', str(runtime/'compose.review.public.yaml'),
+        '-f', str(state/'compose.json')]
+    knowledge = root/'.review-access/knowledge/compose.json'
+    if knowledge.is_file() and (knowledge.parent/'enabled').is_file():
+        command += ['--profile', 'knowledge-review', '-f', str(knowledge)]
+    return command+['-f', str(runtime/'images.json')]
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--root', type=Path, required=True)
@@ -95,9 +105,7 @@ def main():
                 controller.with_suffix('.before-monitoring').chmod(0o700)
             write_private(controller, (state/'deploy-review-release.py').read_text(), executable=True)
             write_private(state/'enabled', 'Host monitoring enabled\n')
-            command = docker+['compose', '-p', 'noc-review', '--env-file', str(root/'.env.review'),
-                '-f', str(runtime/'compose.review.yaml'), '-f', str(runtime/'compose.review.public.yaml'),
-                '-f', str(state/'compose.json'), '-f', str(runtime/'images.json')]
+            command = compose_command(docker, root, runtime, state)
             subprocess.run(command+['up', '-d', '--no-build', '--no-deps', '--wait', 'api'], check=True)
             subprocess.run(['systemctl', '--user', 'daemon-reload'], check=True)
             subprocess.run(['systemctl', '--user', 'enable', '--now', 'noc-host-agent.service'], check=True)
