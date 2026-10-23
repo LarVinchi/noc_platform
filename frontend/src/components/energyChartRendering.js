@@ -2,6 +2,14 @@ const fmt = value => value == null ? '—' : Number(value).toLocaleString('en-GB
 const dateText = day => new Intl.DateTimeFormat('en-GB',{day:'numeric',month:'long',year:'numeric',timeZone:'Africa/Lagos'}).format(new Date(day+'T12:00:00+01:00'));
 const categoryDate = day => new Intl.DateTimeFormat('en-GB',{day:'2-digit',month:'short',year:'numeric',timeZone:'Africa/Lagos'}).format(new Date(day+'T12:00:00+01:00'));
 
+// Rounded headroom follows the selected day's largest reading, independently per unit.
+export function dailyAxisMaximum(value, minimum=1) {
+  const target = Math.max(minimum, value * 1.15);
+  const step = 10 ** Math.floor(Math.log10(target / 4));
+  const fraction = target / (4 * step);
+  return 4 * step * (fraction <= 1 ? 1 : fraction <= 2 ? 2 : fraction <= 2.5 ? 2.5 : fraction <= 5 ? 5 : 10);
+}
+
 export function energyEmptyLabel(site,kind) {
   const incomplete = site.records.some(r => r.kind===kind && !r.stop);
   return [kind==='grid'?'No EKEDC supply recorded':'No generator runtime recorded', incomplete ? 'An incomplete source record needs review.' : 'Reported runtime: 0 hours for this day.'];
@@ -44,26 +52,25 @@ export function drawChart(canvas,site,kind,mode,report) {
   text(`${dateText(report.date)} · Lagos / WAT`,40,77,16,color.muted);
   [[color.hours,`${name} (hrs)`],[color.usage,`Consumption (${unit})${signed?' · downward':''}`],[color.addition,kind==='grid'?'Top-up · upward':'Refill · upward']].slice(0,measured?(data.some(r=>r.addition)?3:2):1).forEach(([ink,label],i)=>{ctx.fillStyle=ink;ctx.fillRect(40+i*365,102,12,12);text(label,62+i*365,114,14,color.muted);});
   // Keep separate rows for negative values, category dates/times and the summary.
-  const x=signed?27:85,w=signed?1146:1030,y=signed?144:160,h=signed?H-106-y:330;
+  const x=85,w=1030,y=signed?155:160,h=signed?H-106-y:330;
   const overlap=site.issues.some(issue=>issue.message.startsWith('Overlapping '+kind));
   const partial=kind==='grid'?site.gridPartial:site.dieselPartial;
   if(!data.length){const [label,note]=energyEmptyLabel(site,kind);text(label,W/2,280,25,color.ink,700,'center');text(note,W/2,315,16,color.muted,400,'center');return;}
-  const hourMax=Math.max(2,Math.ceil(Math.max(...data.map(v=>v.hours))/2)*2);
-  const quantityMax=Math.max(5,Math.ceil(Math.max(...data.map(v=>Math.max(v.used,v.addition)))/5)*5);
-  // Preserve the original Excel plot proportions: shared scale, full-width
-  // categories and a baseline fitted to the actual positive/negative ranges.
-  const positive=Math.max(0,...data.map(r=>Math.max(r.hours,measured?r.addition:0)));
-  const negative=measured?Math.max(0,...data.map(r=>r.measured?r.used:0)):0;
-  const scale=h/(((positive+negative)||1)*1.14);
-  const zero=signed?(negative>0?y+positive*1.14*scale:y+h):y+h;
-  const quantityHeight=signed?quantityMax*scale:h, hourHeight=signed?hourMax*scale:h;
-  if(!signed){text('HOURS',x,y-18,13,color.muted,700);if(measured)text(unit+' · RIGHT AXIS',x+w,y-18,13,color.muted,700,'right');}
+  const hourMax=dailyAxisMaximum(Math.max(...data.map(v=>v.hours)));
+  const quantityMax=dailyAxisMaximum(Math.max(...data.map(v=>Math.max(v.used,v.addition))));
+  const negative=signed&&measured&&data.some(r=>r.measured&&r.used>0);
+  const hourHeight=negative?h*.55:h, zero=y+hourHeight;
+  // Quantities use one right-axis scale above/below zero. Hours occupy the
+  // positive region on their own left-axis scale, unaffected by refill size.
+  const quantityHeight=negative?Math.min(hourHeight,h-hourHeight):h;
+  text('HOURS',x,y-18,13,color.muted,700);
+  if(measured)text(unit+' · REFILL / USAGE',x+w,y-18,13,color.muted,700,'right');
   for(let i=0;i<=4;i++){
-    if(signed){if(i===0){ctx.strokeStyle=color.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,zero);ctx.lineTo(x+w,zero);ctx.stroke();}continue;}
-    const yy=zero-hourHeight*i/4;ctx.strokeStyle=color.line;ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();
+    const yy=zero-hourHeight*i/4;
+    if(!signed||i===0){ctx.strokeStyle=color.line;ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(x,yy);ctx.lineTo(x+w,yy);ctx.stroke();}
     text((hourMax*i/4).toFixed(1),x-12,yy+5,12,color.muted,400,'right');
-    if(measured)text((quantityMax*i/4).toFixed(1),x+w+12,yy+5,12,color.muted);
-    if(measured&&signed&&i>0)text((-quantityMax*i/4).toFixed(1),x+w+12,zero+quantityHeight*i/4+5,12,color.muted);
+    if(measured)text((quantityMax*i/4).toFixed(1),x+w+12,zero-quantityHeight*i/4+5,12,color.muted);
+    if(negative&&i>0)text((-quantityMax*i/4).toFixed(1),x+w+12,zero+quantityHeight*i/4+5,12,color.muted);
   }
   const step=w/data.length,hasAdditions=measured&&data.some(r=>r.addition);
   data.forEach((r,i)=>{

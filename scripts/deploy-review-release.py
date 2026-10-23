@@ -149,6 +149,9 @@ def compose(root, runtime=None):
     monitoring = root / '.review-access/monitoring/compose.json'
     if monitoring.is_file() and (monitoring.parent / 'enabled').is_file():
         command += ['-f', str(monitoring)]
+    knowledge = root / '.review-access/knowledge/compose.json'
+    if knowledge.is_file() and (knowledge.parent / 'enabled').is_file():
+        command += ['--profile', 'knowledge-review', '-f', str(knowledge)]
     return command
 
 
@@ -177,6 +180,7 @@ def report_stage(state, sha, stage, result='running', begin=False, rollback=None
 
 
 def deploy(root, state_root, release_dir, manifest):
+    apps = APPS + (['knowledge-review'] if (root / '.review-access/knowledge/enabled').is_file() else [])
     report_stage(state_root, manifest['sha'], 'loading_images')
     runtime = release_dir / 'runtime'
     runtime.mkdir()
@@ -191,8 +195,8 @@ def deploy(root, state_root, release_dir, manifest):
         image = json.loads(capture(DOCKER + ['image', 'inspect', item['image']]))[0]
         verify_loaded_image(release_dir / item['file'], item, image, manifest['sha'])
         loaded_images[name] = image['Id']
-    images = {name: loaded_images['backend' if name in ['api', 'response-worker', 'migrate'] else 'frontend']
-              for name in APPS + ['migrate']}
+    images = {name: loaded_images['backend' if name in ['api', 'response-worker', 'migrate', 'knowledge-review'] else 'frontend']
+              for name in apps + ['migrate']}
     override = runtime / 'images.json'
     write_json(override, {'services': {name: {'image': image} for name, image in images.items()}})
     candidate = compose(root, runtime) + ['-f', str(override)]
@@ -203,7 +207,7 @@ def deploy(root, state_root, release_dir, manifest):
     backup.mkdir(parents=True)
     # Compose resolves all bind paths and volume names before serializing.
     rollback = json.loads(capture(previous + ['config', '--format', 'json']))
-    for name in APPS + ['migrate']:
+    for name in apps + ['migrate']:
         rollback['services'][name].pop('build', None)
         container = 'noc-review-' + ('api' if name == 'migrate' else name) + '-1'
         rollback['services'][name]['image'] = json.loads(capture(DOCKER + ['inspect', container]))[0]['Image']
@@ -216,7 +220,7 @@ def deploy(root, state_root, release_dir, manifest):
     try:
         report_stage(state_root, manifest['sha'], 'backing_up')
         stopped = True
-        run(previous + ['stop', *APPS], stdout=subprocess.DEVNULL)
+        run(previous + ['stop', *apps], stdout=subprocess.DEVNULL)
         with (backup / 'database.dump').open('wb') as stream:
             run(DOCKER + ['exec', 'noc-review-db-1', 'pg_dump', '-U', 'noc_review', '-d', 'noc_review', '-Fc'], stdout=stream)
         run(DOCKER + ['exec', '-i', 'noc-review-db-1', 'pg_restore', '--list'],
@@ -238,7 +242,7 @@ def deploy(root, state_root, release_dir, manifest):
         report_stage(state_root, manifest['sha'], 'migrating')
         run(candidate + ['run', '--rm', '--no-deps', 'migrate'], stdout=subprocess.DEVNULL)
         report_stage(state_root, manifest['sha'], 'starting')
-        run(candidate + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *APPS], stdout=subprocess.DEVNULL)
+        run(candidate + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *apps], stdout=subprocess.DEVNULL)
         report_stage(state_root, manifest['sha'], 'health_check')
         # Validate the anonymous public upstream stays password protected.
         try:
@@ -264,7 +268,7 @@ def deploy(root, state_root, release_dir, manifest):
             report_stage(state_root, manifest['sha'], 'rollback', rollback='attempted')
             # Schema downgrades and destructive restores require operator review.
             try:
-                run(rollback_command + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *APPS], stdout=subprocess.DEVNULL)
+                run(rollback_command + ['up', '-d', '--no-build', '--no-deps', '--wait', '--wait-timeout', '240', *apps], stdout=subprocess.DEVNULL)
             except Exception as rollback_error:
                 report_stage(state_root, manifest['sha'], 'failed', 'failed', rollback='failed', error_type=type(rollback_error).__name__)
                 raise

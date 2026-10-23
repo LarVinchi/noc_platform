@@ -1,0 +1,33 @@
+import importlib.util
+import json
+from pathlib import Path
+import pytest
+
+spec=importlib.util.spec_from_file_location('review_installer',Path(__file__).parents[1]/'install-review-knowledge.py')
+installer=importlib.util.module_from_spec(spec);spec.loader.exec_module(installer)
+
+
+def test_installer_prepares_private_readonly_input_and_reuses_token_without_printing_it(tmp_path,capsys):
+    root=tmp_path/'app';root.mkdir()
+    assessment=tmp_path/'extraction';assessment.mkdir();(assessment/'extractions').mkdir();(assessment/'assessment.json').write_text('{}')
+    settings=tmp_path/'provider.env';settings.write_text('GEMINI_API_KEY="PRIVATE_SYNTHETIC_KEY"\nRAG_GEMINI_MODEL=gemini-3.8-flash\nUNRELATED=ignored\n')
+    state=installer.prepare(root,assessment,settings,'sha256:'+'a'*64,1000,1000)
+    config=json.loads((state/'compose.json').read_text())
+    service=config['services']['knowledge-review']
+    assert service['user']=='1000:1000'
+    assert str(assessment)+':/assessment:ro' in service['volumes']
+    assert 'ports' not in service and 'PRIVATE_SYNTHETIC_KEY' not in json.dumps(config)
+    token=(state/'worker.token').read_text()
+    installer.prepare(root,assessment,settings,'sha256:'+'b'*64,1000,1000)
+    assert (state/'worker.token').read_text()==token
+    assert 'UNRELATED' not in (state/'worker.env').read_text()
+    assert not (state/'enabled').exists()
+    assert capsys.readouterr().out==''
+
+
+def test_installer_rejects_wrong_input_invalid_image_or_multiline_credential(tmp_path):
+    root=tmp_path/'app';root.mkdir()
+    with pytest.raises(ValueError):installer.prepare(root,tmp_path,None,'mutable:latest',1000,1000)
+    with pytest.raises(ValueError):installer.prepare(root,tmp_path,None,'sha256:'+'a'*64,1000,1000)
+    provider=tmp_path/'provider.env';provider.write_text('GEMINI_API_KEY=invalid key with spaces\n')
+    with pytest.raises(ValueError):installer.provider_settings(provider)

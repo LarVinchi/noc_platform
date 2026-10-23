@@ -30,6 +30,14 @@ def test_stage_history_and_private_overlay_are_explicit(tmp_path):
     assert str(overlay) not in deployer.compose(tmp_path)
     (overlay.parent/'enabled').write_text('enabled')
     assert str(overlay) in deployer.compose(tmp_path)
+    knowledge=tmp_path/'.review-access/knowledge/compose.json'
+    knowledge.parent.mkdir(parents=True)
+    knowledge.write_text('{}')
+    assert str(knowledge) not in deployer.compose(tmp_path)
+    (knowledge.parent/'enabled').write_text('enabled')
+    command=deployer.compose(tmp_path)
+    assert str(knowledge) in command and '--profile' in command and 'knowledge-review' in command
+    assert str(overlay) in command
 
 
 def manifest():
@@ -92,13 +100,20 @@ def test_provenance_requires_successful_matching_main_run():
 
 
 @pytest.mark.parametrize('failure', ['stop', 'migrate', 'up'])
-def test_deployment_failure_restarts_previous_images_without_restoring_database(tmp_path, monkeypatch, failure):
+@pytest.mark.parametrize('knowledge_enabled', [False, True])
+def test_deployment_failure_restarts_previous_images_without_restoring_database(tmp_path, monkeypatch, failure, knowledge_enabled):
     import json
     import subprocess
     root = tmp_path / 'server'
     access = root / '.review-access'
     state = access / 'cd'
     state.mkdir(parents=True)
+    apps=deployer.APPS+(['knowledge-review'] if knowledge_enabled else [])
+    if knowledge_enabled:
+        knowledge=access/'knowledge'
+        knowledge.mkdir()
+        (knowledge/'enabled').write_text('enabled')
+        (knowledge/'compose.json').write_text('{}')
     (root / '.env.review').write_text('private settings')
     (access / 'htpasswd').write_text('private hash')
     release = access / 'releases' / SHA
@@ -108,7 +123,7 @@ def test_deployment_failure_restarts_previous_images_without_restoring_database(
     value = manifest()
     def capture(args):
         if 'config' in args:
-            return json.dumps({'services': {name: {'image': 'previous', 'build': {}} for name in deployer.APPS + ['migrate']}})
+            return json.dumps({'services': {name: {'image': 'previous', 'build': {}} for name in apps + ['migrate']}})
         if 'image' in args:
             return json.dumps([{'Id': 'sha256:' + 'c'*64, 'Config': {'Labels': {'org.opencontainers.image.revision': SHA}}}])
         return json.dumps([{'Image': 'sha256:' + 'd'*64}])
@@ -129,6 +144,10 @@ def test_deployment_failure_restarts_previous_images_without_restoring_database(
         deployer.deploy(root, state, release, value)
     rollback = [args for args in calls if 'up' in args and any(arg.endswith('previous.json') for arg in args)]
     assert len(rollback) == 1
+    assert ('knowledge-review' in rollback[0])==knowledge_enabled
+    image_override=json.loads((release/'runtime/images.json').read_text())['services']
+    if knowledge_enabled:
+        assert image_override['knowledge-review']['image']==image_override['api']['image']
     assert not (state / 'current.json').exists()
     assert not any('downgrade' in args or '--clean' in args for args in calls)
     if failure != 'stop':

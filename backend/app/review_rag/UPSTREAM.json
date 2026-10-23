@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/Sydneychioma/RAG-SYSTEM",
+  "upstream_commit": "5bfb52ad4f79c8837169ef94ef7cb4758d215d4a",
+  "snapshot_sha256": "f200163baae3d42b9306a8cab489f741d7f0ff36cad02a95e71a2e6be90b61a4",
+  "files": {
+    "noc_service/__init__.py": "babf1be743882295afa15b00b6aad2586bf2030a96878eb4359ab674dc0656e7",
+    "noc_service/contracts.py": "4a0a604f751acb5523097d4afac0c4e3c252f3f556a99cc3d43a68a28b9874db",
+    "noc_service/corpus_preview.py": "e2c55f3a3db1132fd1f0bf155e50c707f590ea1e7791f98792e6e37bdaf8e99f",
+    "noc_service/derived.py": "b2a72cabcff47fff3c3e001266b91684c53204ce084b3100f22a6f870f0d6114",
+    "noc_service/embeddings.py": "850d8a94d6677cc294b43a84d53584b3cf45cb4915fe85fa98ae0b8e9e0af431",
+    "noc_service/engine.py": "ae267fe98e462ace58663ad3562ead2bb12761f8600b31c03d6cdba8f9ad92ec",
+    "noc_service/extraction.py": "f6b02c93c78dcd863e08bcd244099ef2d06db20b9ec91011e26158b4e09f35f7",
+    "noc_service/gemini.py": "b477ac53e43c08ca8e7435214443f955a3af99ee0a68772062339c0ff6fc7098",
+    "noc_service/incident_inventory.py": "57bd3c2c80526ae5d928269093b2b3b8a8fa45a4560e674f4ebe79fdd39c7fc4",
+    "noc_service/loaders.py": "b84b8772f724b6123649d9b406ae877926fdff84e20863453494bef30f787339",
+    "noc_service/review_runtime.py": "f082c0b3d48e3340e34548f876f64564b10141f260caffcfe5b464e5c575ae2c",
+    "noc_service/snapshot.py": "921a545bb721a4b265acb84dc841fafb89c00ab75dd739c50635380dbbe04761",
+    "noc_service/store.py": "7850d75a32448aed2d42170819a70a29b67834f1965f4ccc3fcb2e24f94103b5",
+    "noc_service/vector_store.py": "84aa03b11a1f927a7a238dc0e99841721da665998938dd62efa9c689d29b805f"
+  },
+  "scope": "Runtime code only. No documents, keys, indexes, preview UI or provider calls."
+}

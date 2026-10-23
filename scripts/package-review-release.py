@@ -20,6 +20,7 @@ RUNTIME_FILES = [
     'docs/linked-onedrive-intake.md',
     'scripts/run-ftth-weekly-reports.py', 'docs/afl-ftth-workspace.md',
     'deploy/systemd/noc-ftth-weekly-report.service', 'deploy/systemd/noc-ftth-weekly-report.timer',
+    'scripts/install-review-knowledge.py', 'docs/review-knowledge.md',
 ]
 
 

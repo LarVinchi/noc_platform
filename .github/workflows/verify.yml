@@ -73,6 +73,7 @@ jobs:
       - name: Verify runtime contents and PDF dependencies
         run: |
           docker run --rm --entrypoint python noc-backend:verify -c "import os,importlib.util; from io import BytesIO; from xhtml2pdf import pisa; assert os.getuid()==10001; assert importlib.util.find_spec('pytest') is None; result=BytesIO(); assert not pisa.CreatePDF('<p>NOC runtime check</p>',dest=result).err; assert result.getvalue().startswith(b'%PDF')"
+          docker run --rm --network none --entrypoint python noc-backend:verify -c "from app.review_rag.noc_service.incident_inventory import IncidentInventory; from app.review_rag.noc_service.review_runtime import create_runtime; assert IncidentInventory([], snapshot='a'*64, files=0).search()['summary']['provider_calls']==0"
           docker run --rm --add-host api:127.0.0.1 --entrypoint nginx noc-frontend:verify -t
           docker run --rm -v "$PWD/deploy/review-gateway.nginx.conf:/etc/nginx/nginx.conf:ro" --entrypoint nginx noc-frontend:verify -t
       - name: Package the tested main-branch images
